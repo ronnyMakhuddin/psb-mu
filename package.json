@@ -5,7 +5,8 @@
   "type": "module",
   "description": "Aplikasi Penerimaan Santri Baru Yayasan Induk Mamba'ul Ulum",
   "scripts": {
-    "dev": "vercel dev"
+    "dev": "vercel dev",
+    "schema": "node scripts/build-schema.mjs"
   },
   "engines": {
     "node": ">=18"

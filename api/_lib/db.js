@@ -1,4 +1,5 @@
 import pg from 'pg';
+import { SCHEMA_SQL } from './schema.js';
 
 const conn = process.env.DATABASE_URL || process.env.POSTGRES_URL || '';
 let pool = globalThis.__psbPool;
@@ -35,4 +36,26 @@ export async function q(text, params = []) {
 
 export function httpError(status, message) {
   return Object.assign(new Error(message), { status });
+}
+
+// Membuat tabel & fungsi otomatis saat database masih kosong (sekali per cold start).
+let schemaReady = globalThis.__psbSchemaReady || null;
+export function ensureSchema() {
+  if (!schemaReady) {
+    schemaReady = (async () => {
+      const client = await db().connect();
+      try {
+        const { rows } = await client.query(
+          "select to_regclass('public.pengaturan') is not null and to_regclass('public.petugas') is not null and to_regprocedure('public.daftar_pendaftar(jsonb)') is not null as ok");
+        if (rows[0].ok) return;
+        await client.query('select pg_advisory_lock(727001)');
+        try { await client.query(SCHEMA_SQL); } finally { await client.query('select pg_advisory_unlock(727001)'); }
+      } finally { client.release(); }
+    })().catch((e) => {
+      schemaReady = null; globalThis.__psbSchemaReady = null;
+      throw httpError(500, `Gagal menyiapkan database otomatis: ${e.message}`);
+    });
+    globalThis.__psbSchemaReady = schemaReady;
+  }
+  return schemaReady;
 }

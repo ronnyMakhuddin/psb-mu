@@ -30,7 +30,7 @@ Di [vercel.com](https://vercel.com) pilih **Add New → Project**, import reposi
 ### 2. Buat database Neon
 1. Di project Vercel buka tab **Storage → Create Database → Neon (Serverless Postgres)**, pilih paket **Free**, lalu **Connect** ke project ini. Vercel otomatis menambahkan Environment Variable `DATABASE_URL`.
    *(Alternatif: buat project di [neon.tech](https://neon.tech), salin connection string, lalu tambahkan sendiri sebagai `DATABASE_URL` di Settings → Environment Variables.)*
-2. Buka **Neon Console → SQL Editor** (dari tombol *Open in Neon* di Vercel), tempel seluruh isi [`database/schema.sql`](database/schema.sql), lalu **Run**. Ini membuat tabel, fungsi, dan contoh unit (MTs, MA, SMK, Asrama Putra, Asrama Putri) yang bisa diubah dari menu Unit.
+2. Tabel dan fungsi database **dibuat otomatis** saat aplikasi pertama kali dibuka, termasuk contoh unit (MTs, MA, SMK, Asrama Putra, Asrama Putri) yang bisa diubah dari menu Unit. Tidak perlu menjalankan SQL manual. (Skema lengkapnya ada di [`database/schema.sql`](database/schema.sql); bila ingin menjalankannya sendiri, gunakan SQL Editor di console.neon.tech, bukan editor query di Vercel yang hanya menerima satu perintah.)
 3. (Disarankan) Tambahkan Environment Variable `AUTH_SECRET` berisi teks acak panjang untuk menandatangani sesi login petugas.
 4. **Redeploy** project (Deployments → ⋯ → Redeploy) agar variabel baru terbaca.
 
@@ -52,8 +52,8 @@ js/config.js          Saklar preview
 js/vendor/            Ikon lucide (disimpan lokal)
 api/psb.js            Satu endpoint API untuk semua aksi
 api/config.js         Memberi tahu browser apakah database sudah tersambung
-api/_lib/             Koneksi database & token login petugas
-database/schema.sql   Skema PostgreSQL (tabel & fungsi)
+api/_lib/             Koneksi database, pembuatan tabel otomatis & token login petugas
+database/schema.sql   Skema PostgreSQL (tabel & fungsi); setelah diubah jalankan `npm run schema`
 ```
 
 ## Keamanan

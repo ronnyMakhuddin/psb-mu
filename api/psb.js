@@ -1,5 +1,5 @@
 // Satu endpoint API untuk seluruh aplikasi PSB: POST /api/psb { action, ...data }
-import { q, httpError } from './_lib/db.js';
+import { q, httpError, ensureSchema } from './_lib/db.js';
 import { makeToken, currentStaff, requireStaff, requireAdmin, PROFILE_SQL } from './_lib/auth.js';
 
 const ROLES = ['admin', 'operator_pendidikan', 'operator_asrama'];
@@ -229,6 +229,7 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   if (req.method !== 'POST') return res.status(405).json({ error: 'Gunakan POST' });
   try {
+    await ensureSchema();
     const body = await readBody(req);
     const fn = Object.prototype.hasOwnProperty.call(actions, body.action) ? actions[body.action] : null;
     if (!fn) return res.status(400).json({ error: 'Aksi tidak dikenal' });

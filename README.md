@@ -1,7 +1,7 @@
 # PSB Mamba'ul Ulum
 
 Aplikasi web **Penerimaan Santri Baru (PSB)** Yayasan Induk Mamba'ul Ulum, Awang-awang Mojosari Mojokerto.
-Database & login petugas memakai **Supabase**, hosting di **Vercel**.
+Database **Neon Postgres** (gratis) dan hosting **Vercel**. Semua akses data lewat API di Vercel.
 
 ## Fitur
 
@@ -17,55 +17,47 @@ Database & login petugas memakai **Supabase**, hosting di **Vercel**.
 - Pengumuman (umum atau per unit) dan pengaturan PSB (tahun ajaran, gelombang, buka/tutup pendaftaran, awalan nomor, WA panitia, info pendaftaran).
 
 **Operator Unit Pendidikan / Operator Unit Asrama**
-- Hanya melihat pendaftar di unitnya sendiri (dijaga Row Level Security di database).
+- Hanya melihat pendaftar di unitnya sendiri (dicek di server).
 - Verifikasi status & catatan untuk sisi unitnya saja, edit biodata, buat pengumuman untuk unitnya.
 
 Tampilan responsif: sidebar di desktop, menu bawah melayang di HP. Bisa dipasang sebagai aplikasi (PWA).
 
 ## Langkah Deploy
 
-### 1. Siapkan Supabase
-1. Buat project di [supabase.com](https://supabase.com).
-2. Buka **SQL Editor**, tempel seluruh isi [`supabase/schema.sql`](supabase/schema.sql), lalu **Run**. File ini membuat tabel, fungsi, RLS, dan contoh unit (MTs, MA, SMK, Asrama Putra, Asrama Putri) yang bisa diubah nanti dari menu Unit.
-3. Buat admin pertama: **Authentication → Users → Add user** (isi email & password, centang *Auto Confirm User*). Lalu jalankan di SQL Editor (ganti emailnya):
-   ```sql
-   insert into public.profiles (id, nama, email, role)
-   select id, 'Administrator', email, 'admin' from auth.users where email = 'admin@contoh.com'
-   on conflict (id) do update set role = 'admin';
-   ```
-4. Catat dari **Project Settings → API**: `Project URL`, `anon public key`, dan `service_role key`.
+### 1. Import ke Vercel
+Di [vercel.com](https://vercel.com) pilih **Add New → Project**, import repository ini. Framework Preset: **Other** (tanpa build command), lalu **Deploy**. Sebelum database tersambung, aplikasi berjalan dalam Mode Preview.
 
-### 2. Deploy ke Vercel
-1. Di [vercel.com](https://vercel.com) pilih **Add New → Project**, import repository ini. Framework Preset: **Other** (tidak perlu build command).
-2. Tambahkan **Environment Variables**:
-   | Nama | Isi |
-   |---|---|
-   | `SUPABASE_URL` | Project URL |
-   | `SUPABASE_ANON_KEY` | anon public key |
-   | `SUPABASE_SERVICE_ROLE_KEY` | service_role key (rahasia, hanya dipakai server untuk membuat akun operator) |
-3. Klik **Deploy**. Selesai.
+### 2. Buat database Neon
+1. Di project Vercel buka tab **Storage → Create Database → Neon (Serverless Postgres)**, pilih paket **Free**, lalu **Connect** ke project ini. Vercel otomatis menambahkan Environment Variable `DATABASE_URL`.
+   *(Alternatif: buat project di [neon.tech](https://neon.tech), salin connection string, lalu tambahkan sendiri sebagai `DATABASE_URL` di Settings → Environment Variables.)*
+2. Buka **Neon Console → SQL Editor** (dari tombol *Open in Neon* di Vercel), tempel seluruh isi [`database/schema.sql`](database/schema.sql), lalu **Run**. Ini membuat tabel, fungsi, dan contoh unit (MTs, MA, SMK, Asrama Putra, Asrama Putri) yang bisa diubah dari menu Unit.
+3. (Disarankan) Tambahkan Environment Variable `AUTH_SECRET` berisi teks acak panjang untuk menandatangani sesi login petugas.
+4. **Redeploy** project (Deployments → ⋯ → Redeploy) agar variabel baru terbaca.
 
-Akun operator selanjutnya dibuat dari menu **Pengguna** di aplikasi (login sebagai admin).
+### 3. Buat admin pertama
+Buka `https://<domain-anda>/#/petugas`. Karena belum ada akun, aplikasi otomatis menampilkan halaman **Buat Akun Admin Pertama**. Isi nama, email, dan password. Halaman ini tertutup sendiri setelah admin dibuat. Akun operator berikutnya dibuat dari menu **Pengguna**.
 
 ## Mode Preview
-Jika aplikasi dibuka tanpa konfigurasi Supabase (mis. dijalankan lokal), aplikasi otomatis masuk **Mode Preview**: memakai data contoh di memori, ada banner "Mode Preview Aktif" dan tombol *quick login* untuk mencoba semua role. Begitu Environment Variables terisi, mode preview hilang dan aplikasi 100% memakai Supabase. Pengaturan ada di [`js/config.js`](js/config.js) (`IS_PREVIEW = 'auto' | true | false`).
+Jika `DATABASE_URL` belum diatur (atau dibuka lokal tanpa server), aplikasi otomatis masuk **Mode Preview**: memakai data contoh di memori, ada banner "Mode Preview Aktif" dan tombol *quick login* untuk mencoba semua role. Begitu `DATABASE_URL` terisi, mode preview hilang dan aplikasi memakai database. Pengaturan ada di [`js/config.js`](js/config.js) (`IS_PREVIEW = 'auto' | true | false`).
 
-Menjalankan lokal: `npx serve .` atau `python3 -m http.server`, lalu buka `http://localhost:8080`. Untuk menguji dengan Supabase secara lokal gunakan `vercel dev`, atau isi `SUPABASE_URL` / `SUPABASE_ANON_KEY` di `js/config.js`.
+Menjalankan lokal: `npx serve .` (Mode Preview), atau `vercel dev` dengan `DATABASE_URL` di file `.env` untuk memakai database.
 
 ## Struktur
 ```
 index.html            Halaman utama (SPA)
 css/style.css         Tema hijau-emas (lihat docs/DESIGN.md)
 js/app.js             Halaman & logika antarmuka
-js/data.js            Lapisan data Supabase + mode preview
-js/config.js          Saklar preview / konfigurasi opsional
-js/vendor/            lucide (ikon) & supabase-js, disimpan lokal
-api/config.js         Mengirim URL & anon key ke browser
-api/users.js          Kelola akun petugas (butuh service role key)
-supabase/schema.sql   Skema database, fungsi, dan RLS
+js/data.js            Pemanggil API + mode preview
+js/config.js          Saklar preview
+js/vendor/            Ikon lucide (disimpan lokal)
+api/psb.js            Satu endpoint API untuk semua aksi
+api/config.js         Memberi tahu browser apakah database sudah tersambung
+api/_lib/             Koneksi database & token login petugas
+database/schema.sql   Skema PostgreSQL (tabel & fungsi)
 ```
 
 ## Keamanan
-- Pendaftar tidak punya akses langsung ke tabel `pendaftar`; pendaftaran, login, dan edit biodata lewat fungsi database (`daftar_pendaftar`, `login_pendaftar`, `update_biodata_pendaftar`) yang memeriksa Nomor Pendaftaran + Nomor HP.
-- Operator dibatasi RLS ke unitnya, dan trigger mencegah operator mengubah status sisi unit lain.
-- `SUPABASE_SERVICE_ROLE_KEY` hanya dipakai di fungsi server `api/users.js`, tidak pernah dikirim ke browser.
+- Browser tidak pernah tersambung langsung ke database; semua lewat `api/psb.js` di server Vercel.
+- Pendaftar hanya bisa membaca/mengubah datanya sendiri dengan Nomor Pendaftaran + Nomor HP.
+- Password petugas disimpan sebagai hash bcrypt (`pgcrypto`). Sesi petugas memakai token bertanda tangan (12 jam), dan role selalu dicek ulang dari database.
+- Operator hanya melihat pendaftar di unitnya dan hanya bisa mengubah status sisi unitnya (pendidikan atau asrama).

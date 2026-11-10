@@ -1,6 +1,7 @@
 -- =====================================================================
--- PSB Yayasan Induk Mamba'ul Ulum - Skema Database Supabase
--- Jalankan seluruh file ini di Supabase Dashboard > SQL Editor.
+-- PSB Yayasan Induk Mamba'ul Ulum - Skema Database PostgreSQL (Neon)
+-- Jalankan seluruh file ini di Neon Console > SQL Editor.
+-- Admin pertama dibuat dari halaman /#/setup di aplikasi.
 -- Aman dijalankan ulang (idempotent).
 -- =====================================================================
 
@@ -20,14 +21,15 @@ create table if not exists public.units (
   created_at  timestamptz not null default now()
 );
 
-create table if not exists public.profiles (
-  id          uuid primary key references auth.users(id) on delete cascade,
-  nama        text not null default '',
-  email       text,
-  role        text not null default 'operator_pendidikan'
-              check (role in ('admin','operator_pendidikan','operator_asrama')),
-  unit_id     uuid references public.units(id) on delete set null,
-  created_at  timestamptz not null default now()
+create table if not exists public.petugas (
+  id            uuid primary key default gen_random_uuid(),
+  nama          text not null default '',
+  email         text not null unique,
+  password_hash text not null,
+  role          text not null default 'operator_pendidikan'
+                check (role in ('admin','operator_pendidikan','operator_asrama')),
+  unit_id       uuid references public.units(id) on delete set null,
+  created_at    timestamptz not null default now()
 );
 
 create table if not exists public.pengaturan (
@@ -98,23 +100,13 @@ create table if not exists public.pengumuman (
   isi         text not null,
   unit_id     uuid references public.units(id) on delete cascade,
   tampil      boolean not null default true,
-  created_by  uuid references auth.users(id) on delete set null,
+  created_by  uuid references public.petugas(id) on delete set null,
   created_at  timestamptz not null default now()
 );
 
 -- ---------------------------------------------------------------------
--- FUNGSI BANTU (role & unit petugas yang sedang login)
+-- FUNGSI BANTU
 -- ---------------------------------------------------------------------
-create or replace function public.my_role() returns text
-language sql stable security definer set search_path = public as $$
-  select role from public.profiles where id = auth.uid()
-$$;
-
-create or replace function public.my_unit() returns uuid
-language sql stable security definer set search_path = public as $$
-  select unit_id from public.profiles where id = auth.uid()
-$$;
-
 create or replace function public.normalisasi_hp(p text) returns text
 language sql immutable as $$
   select case
@@ -124,22 +116,12 @@ language sql immutable as $$
   end
 $$;
 
--- updated_at otomatis + batasan kolom untuk operator
+-- updated_at otomatis, nomor pendaftaran tidak bisa diubah
 create or replace function public.pendaftar_before_update() returns trigger
-language plpgsql security definer set search_path = public as $$
-declare r text := public.my_role();
+language plpgsql as $$
 begin
   new.updated_at := now();
   new.no_pendaftaran := old.no_pendaftaran;
-  if r = 'operator_pendidikan' then
-    new.status_asrama := old.status_asrama;
-    new.catatan_asrama := old.catatan_asrama;
-    new.unit_asrama_id := old.unit_asrama_id;
-  elsif r = 'operator_asrama' then
-    new.status_pendidikan := old.status_pendidikan;
-    new.catatan_pendidikan := old.catatan_pendidikan;
-    new.unit_pendidikan_id := old.unit_pendidikan_id;
-  end if;
   return new;
 end $$;
 
@@ -148,11 +130,11 @@ create trigger trg_pendaftar_before_update before update on public.pendaftar
 for each row execute function public.pendaftar_before_update();
 
 -- ---------------------------------------------------------------------
--- RPC UNTUK PENDAFTAR (tanpa akun; role anon)
+-- FUNGSI UNTUK PENDAFTAR (dipanggil dari API server)
 -- ---------------------------------------------------------------------
 -- Kolom biodata yang boleh diisi/diubah oleh pendaftar
 create or replace function public._pendaftar_set_biodata(p_id uuid, p jsonb) returns void
-language plpgsql security definer set search_path = public as $$
+language plpgsql as $$
 begin
   update public.pendaftar set
     nama_lengkap   = coalesce(nullif(trim(p->>'nama_lengkap'),''), nama_lengkap),
@@ -180,10 +162,9 @@ begin
     email          = case when p ? 'email' then nullif(p->>'email','') else email end
   where id = p_id;
 end $$;
-revoke all on function public._pendaftar_set_biodata(uuid, jsonb) from public, anon, authenticated;
 
 create or replace function public._pendaftar_json(p_id uuid) returns jsonb
-language sql stable security definer set search_path = public as $$
+language sql stable as $$
   select to_jsonb(d) || jsonb_build_object(
     'unit_pendidikan_nama', up.nama,
     'unit_asrama_nama', ua.nama)
@@ -192,10 +173,9 @@ language sql stable security definer set search_path = public as $$
   left join public.units ua on ua.id = d.unit_asrama_id
   where d.id = p_id
 $$;
-revoke all on function public._pendaftar_json(uuid) from public, anon, authenticated;
 
 create or replace function public.daftar_pendaftar(p jsonb) returns jsonb
-language plpgsql security definer set search_path = public as $$
+language plpgsql as $$
 declare
   s public.pengaturan;
   v_id uuid;
@@ -234,7 +214,7 @@ begin
 end $$;
 
 create or replace function public.login_pendaftar(p_no text, p_hp text) returns jsonb
-language plpgsql security definer set search_path = public as $$
+language plpgsql as $$
 declare v_id uuid;
 begin
   select id into v_id from public.pendaftar
@@ -247,7 +227,7 @@ begin
 end $$;
 
 create or replace function public.update_biodata_pendaftar(p_no text, p_hp text, p jsonb) returns jsonb
-language plpgsql security definer set search_path = public as $$
+language plpgsql as $$
 declare d public.pendaftar;
 begin
   select * into d from public.pendaftar
@@ -263,89 +243,16 @@ begin
   return public._pendaftar_json(d.id);
 end $$;
 
-grant execute on function public.daftar_pendaftar(jsonb) to anon, authenticated;
-grant execute on function public.login_pendaftar(text, text) to anon, authenticated;
-grant execute on function public.update_biodata_pendaftar(text, text, jsonb) to anon, authenticated;
 
 -- Statistik ringan untuk halaman depan (jumlah pendaftar per unit, tanpa data pribadi)
 create or replace function public.statistik_publik() returns jsonb
-language sql stable security definer set search_path = public as $$
+language sql stable as $$
   select jsonb_build_object(
     'total', (select count(*) from public.pendaftar),
     'per_unit', coalesce((select jsonb_agg(jsonb_build_object('unit_id', u.id, 'jumlah',
         (select count(*) from public.pendaftar p where p.unit_pendidikan_id = u.id or p.unit_asrama_id = u.id)))
       from public.units u where u.aktif), '[]'::jsonb))
 $$;
-grant execute on function public.statistik_publik() to anon, authenticated;
-
--- ---------------------------------------------------------------------
--- ROW LEVEL SECURITY
--- ---------------------------------------------------------------------
-alter table public.units      enable row level security;
-alter table public.profiles   enable row level security;
-alter table public.pengaturan enable row level security;
-alter table public.pendaftar  enable row level security;
-alter table public.pengumuman enable row level security;
-
--- units: publik baca yang aktif, petugas baca semua, admin kelola
-drop policy if exists units_select on public.units;
-create policy units_select on public.units for select to anon, authenticated
-  using (aktif or public.my_role() is not null);
-drop policy if exists units_admin on public.units;
-create policy units_admin on public.units for all to authenticated
-  using (public.my_role() = 'admin') with check (public.my_role() = 'admin');
-
--- profiles: lihat diri sendiri / admin lihat semua, admin kelola
-drop policy if exists profiles_select on public.profiles;
-create policy profiles_select on public.profiles for select to authenticated
-  using (id = auth.uid() or public.my_role() = 'admin');
-drop policy if exists profiles_admin on public.profiles;
-create policy profiles_admin on public.profiles for all to authenticated
-  using (public.my_role() = 'admin') with check (public.my_role() = 'admin');
-
--- pengaturan: publik baca, admin ubah
-drop policy if exists pengaturan_select on public.pengaturan;
-create policy pengaturan_select on public.pengaturan for select to anon, authenticated using (true);
-drop policy if exists pengaturan_update on public.pengaturan;
-create policy pengaturan_update on public.pengaturan for update to authenticated
-  using (public.my_role() = 'admin') with check (public.my_role() = 'admin');
-
--- pendaftar: TIDAK ada akses langsung untuk anon (pakai RPC di atas)
-drop policy if exists pendaftar_select on public.pendaftar;
-create policy pendaftar_select on public.pendaftar for select to authenticated using (
-  public.my_role() = 'admin'
-  or (public.my_role() = 'operator_pendidikan' and unit_pendidikan_id = public.my_unit())
-  or (public.my_role() = 'operator_asrama' and unit_asrama_id = public.my_unit())
-);
-drop policy if exists pendaftar_update on public.pendaftar;
-create policy pendaftar_update on public.pendaftar for update to authenticated using (
-  public.my_role() = 'admin'
-  or (public.my_role() = 'operator_pendidikan' and unit_pendidikan_id = public.my_unit())
-  or (public.my_role() = 'operator_asrama' and unit_asrama_id = public.my_unit())
-);
-drop policy if exists pendaftar_delete on public.pendaftar;
-create policy pendaftar_delete on public.pendaftar for delete to authenticated
-  using (public.my_role() = 'admin');
-
--- pengumuman: publik baca yang tampil, admin kelola semua,
--- operator kelola pengumuman untuk unitnya sendiri
-drop policy if exists pengumuman_select on public.pengumuman;
-create policy pengumuman_select on public.pengumuman for select to anon, authenticated
-  using (tampil or public.my_role() is not null);
-drop policy if exists pengumuman_write on public.pengumuman;
-create policy pengumuman_write on public.pengumuman for all to authenticated using (
-  public.my_role() = 'admin'
-  or (public.my_role() in ('operator_pendidikan','operator_asrama') and unit_id = public.my_unit())
-) with check (
-  public.my_role() = 'admin'
-  or (public.my_role() in ('operator_pendidikan','operator_asrama') and unit_id = public.my_unit())
-);
-
-grant select on public.units, public.pengaturan, public.pengumuman to anon;
-grant select, insert, update, delete on public.units, public.profiles, public.pengaturan,
-  public.pendaftar, public.pengumuman to authenticated;
-revoke insert, update, delete on public.pendaftar from anon;
-revoke all on public.pendaftar from anon;
 
 -- ---------------------------------------------------------------------
 -- DATA AWAL UNIT (silakan sesuaikan dari menu Unit di aplikasi)
@@ -360,11 +267,3 @@ select * from (values
 ) v(nama, jenis, keterangan, kuota, urutan)
 where not exists (select 1 from public.units);
 
--- ---------------------------------------------------------------------
--- ADMIN PERTAMA
--- 1. Buat user di Authentication > Users (Add user, centang Auto Confirm).
--- 2. Ganti email di bawah lalu jalankan baris ini:
--- insert into public.profiles (id, nama, email, role)
--- select id, 'Administrator', email, 'admin' from auth.users where email = 'admin@contoh.com'
--- on conflict (id) do update set role = 'admin';
--- ---------------------------------------------------------------------

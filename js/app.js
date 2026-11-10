@@ -305,7 +305,7 @@ async function pageDaftar() {
         ${unitSelectFields(v)}
         <div class="section-title">${ic('smartphone')} Kontak (dipakai untuk login)</div>
         <div class="field full"><label for="f-no_hp">Nomor HP / WhatsApp Orang Tua <span class="req">*</span></label>
-          <input class="input" type="tel" name="no_hp" id="f-no_hp" required inputmode="tel" placeholder="08xxxxxxxxxx" value="${esc(v.no_hp || '')}" pattern="[0-9+\\s\\-]{9,16}">
+          <input class="input" type="tel" name="no_hp" id="f-no_hp" required inputmode="tel" placeholder="08xxxxxxxxxx" value="${esc(v.no_hp || '')}" pattern="[0-9+\\s\\-]{9,20}">
           <div class="hint">Nomor ini bersama Nomor Pendaftaran digunakan untuk masuk dan melihat status. Pastikan aktif.</div></div>
         <div class="field full"><label class="switch" style="text-transform:none;letter-spacing:0;font-size:14px;color:var(--text)"><input type="checkbox" name="setuju" required> Saya menyatakan data yang diisi adalah benar.</label></div>`,
     },
@@ -475,8 +475,12 @@ async function pageAkun(tab = 'status') {
 // ---------------------------------------------------------------------
 // LOGIN PETUGAS
 // ---------------------------------------------------------------------
-function pagePetugasLogin() {
+async function pagePetugasLogin() {
   if (S.staff) { location.hash = '#/admin/dashboard'; return; }
+  try {
+    const st = await S.api.setupStatus();
+    if (st?.needed) { location.hash = '#/setup'; return; }
+  } catch (e) { toast(e.message, 'error'); }
   publicLayout(`
     <div class="card auth-box">
       <img class="logo" src="/assets/logo.png" alt="">
@@ -498,6 +502,54 @@ function pagePetugasLogin() {
   });
   form.addEventListener('submit', (e) => { e.preventDefault(); const v = formData(form); go(v.email, v.password); });
   document.querySelectorAll('[data-quick]').forEach((b) => b.addEventListener('click', () => go(b.dataset.quick, 'preview')));
+}
+
+// Setup admin pertama (hanya bisa sekali, saat belum ada petugas sama sekali)
+async function pageSetup() {
+  let needed = false;
+  try { needed = (await S.api.setupStatus())?.needed; } catch (e) { toast(e.message, 'error'); }
+  if (!needed) { location.hash = '#/petugas'; return; }
+  publicLayout(`
+    <div class="card auth-box">
+      <img class="logo" src="/assets/logo.png" alt="">
+      <h2 class="center">Buat Akun Admin Pertama</h2>
+      <p class="center muted small">Database sudah terhubung tetapi belum ada akun petugas. Akun ini menjadi Admin utama dan halaman ini otomatis tertutup setelahnya.</p>
+      <form id="setup-form" class="form-grid" style="grid-template-columns:1fr">
+        <div class="field"><label for="s-nama">Nama</label><input class="input" id="s-nama" name="nama" required value="Administrator"></div>
+        <div class="field"><label for="s-email">Email</label><input class="input" id="s-email" name="email" type="email" required autocomplete="username"></div>
+        <div class="field"><label for="s-pw">Password</label><input class="input" id="s-pw" name="password" type="password" minlength="6" required autocomplete="new-password"></div>
+        <button class="btn btn-primary btn-block" id="setup-btn">${ic('shield-plus')} Buat Admin &amp; Masuk</button>
+      </form>
+    </div>`);
+  const f = document.getElementById('setup-form');
+  f.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!f.reportValidity()) return;
+    withBusy(document.getElementById('setup-btn'), async () => {
+      S.staff = await S.api.setupAdmin(formData(f));
+      S.units = await S.api.listUnits();
+      toast('Akun admin dibuat. Selamat datang!');
+      location.hash = '#/admin/dashboard';
+    });
+  });
+}
+
+function changeOwnPassword() {
+  const m = openModal({
+    title: 'Ganti Password', size: 'sm',
+    body: `<form id="cp-form" class="form-grid" style="grid-template-columns:1fr">
+      <div class="field"><label for="cp-old">Password Lama</label><input class="input" id="cp-old" name="old" type="password" required autocomplete="current-password"></div>
+      <div class="field"><label for="cp-new">Password Baru</label><input class="input" id="cp-new" name="new" type="password" minlength="6" required autocomplete="new-password"></div>
+    </form>`,
+    foot: `<button class="btn btn-outline" data-close>Batal</button><button class="btn btn-primary" id="cp-save">${ic('key-round')} Simpan</button>`,
+  });
+  m.querySelector('#cp-save').onclick = (e) => withBusy(e.currentTarget, async () => {
+    const f = m.querySelector('#cp-form');
+    if (!f.reportValidity()) return;
+    const v = formData(f);
+    await S.api.changePassword(v.old, v.new);
+    closeModal(); toast('Password berhasil diganti');
+  });
 }
 
 // ---------------------------------------------------------------------
@@ -524,10 +576,11 @@ function staffLayout(active, title, content, actions = '') {
       <nav class="side-nav">${menu.map(([k, l, i]) => `<a href="#/admin/${k}" class="${k === active ? 'active' : ''}">${ic(i)} ${l}</a>`).join('')}
         <a href="#/" target="_blank">${ic('external-link')} Halaman Publik</a></nav>
       <div class="side-user"><b>${esc(p.nama || p.email)}</b><span style="color:#a6c8b4">${esc(ROLE_LABEL[p.role])}${p.unit ? ` · ${esc(p.unit.nama)}` : ''}</span>
+        <button class="btn btn-sm btn-block" id="chpw">${ic('key-round')} Ganti Password</button>
         <button class="btn btn-sm btn-block" id="logout">${ic('log-out')} Keluar</button></div>
     </aside>
     <main class="main">
-      <div class="mobile-head"><img src="/assets/logo.png" alt=""><b>PSB Mamba'ul Ulum</b><button class="btn btn-outline btn-icon" id="logout-m" aria-label="Keluar">${ic('log-out')}</button></div>
+      <div class="mobile-head"><img src="/assets/logo.png" alt=""><b>PSB Mamba'ul Ulum</b><button class="btn btn-outline btn-icon" id="chpw-m" aria-label="Ganti password">${ic('key-round')}</button><button class="btn btn-outline btn-icon" id="logout-m" aria-label="Keluar">${ic('log-out')}</button></div>
       <div class="main-top"><h2 class="grow">${esc(title)}</h2>${actions}</div>
       <div id="view">${content}</div>
     </main>
@@ -535,6 +588,8 @@ function staffLayout(active, title, content, actions = '') {
   const out = async () => { await S.api.signOut(); S.staff = null; location.hash = '#/petugas'; };
   document.getElementById('logout').onclick = out;
   document.getElementById('logout-m').onclick = out;
+  document.getElementById('chpw').onclick = changeOwnPassword;
+  document.getElementById('chpw-m').onclick = changeOwnPassword;
   icons();
 }
 const setView = (html) => { const v = document.getElementById('view'); if (v) { v.innerHTML = html; icons(); } };
@@ -697,7 +752,7 @@ function openPendaftar(id, tab = 'detail') {
     body = `<form id="edit-form"><div class="form-grid">
       ${SECTIONS.map((s) => sectionHtml(s, d)).join('')}
       <div class="section-title">${ic('school')} Unit & Kontak</div>
-      ${unitSelectFields(d, { lockPend: role === 'operator_asrama', lockAsr: role === 'operator_pendidikan' })}
+      ${unitSelectFields(d, { lockPend: role !== 'admin', lockAsr: role !== 'admin' })}
       <div class="field full"><label for="f-no_hp">Nomor HP / WA <span class="req">*</span></label><input class="input" id="f-no_hp" name="no_hp" required value="${esc(d.no_hp)}"></div>
     </div></form>`;
   }
@@ -993,6 +1048,7 @@ async function route() {
   if (a === 'masuk') return pageMasuk();
   if (a === 'akun') return pageAkun();
   if (a === 'petugas') return pagePetugasLogin();
+  if (a === 'setup') return pageSetup();
   return pageHome();
 }
 
@@ -1004,7 +1060,7 @@ async function boot() {
     try { S.staff = await S.api.currentProfile(); } catch (e) { S.staff = null; toast(e.message, 'error'); }
     if (S.staff) S.units = await S.api.listUnits();
   } catch (e) {
-    app.innerHTML = `<div class="card auth-box center">${ic('triangle-alert', 'style="width:42px;height:42px;color:var(--red)"')}<h2 class="mt">Aplikasi belum siap</h2><p class="muted">${esc(e.message)}</p><p class="small muted">Pastikan skema database (supabase/schema.sql) sudah dijalankan dan konfigurasi Supabase benar.</p><button class="btn btn-primary" onclick="location.reload()">Coba Lagi</button></div>`;
+    app.innerHTML = `<div class="card auth-box center">${ic('triangle-alert', 'style="width:42px;height:42px;color:var(--red)"')}<h2 class="mt">Aplikasi belum siap</h2><p class="muted">${esc(e.message)}</p><p class="small muted">Pastikan database/schema.sql sudah dijalankan di Neon dan DATABASE_URL sudah diatur di Vercel.</p><button class="btn btn-primary" onclick="location.reload()">Coba Lagi</button></div>`;
     icons();
     return;
   }

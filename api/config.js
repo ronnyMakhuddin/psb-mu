@@ -1,9 +1,8 @@
-// Mengirim konfigurasi publik Supabase dari Environment Variables Vercel.
-// SUPABASE_ANON_KEY memang aman untuk dibaca browser (dilindungi RLS).
+import { hasDb } from './_lib/db.js';
+
+// Memberi tahu browser apakah database sudah dikonfigurasi.
+// Jika belum, aplikasi berjalan dalam Mode Preview (data contoh).
 export default function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
-  res.status(200).json({
-    supabaseUrl: process.env.SUPABASE_URL || '',
-    supabaseAnonKey: process.env.SUPABASE_ANON_KEY || '',
-  });
+  res.status(200).json({ backend: hasDb() ? 'api' : 'preview' });
 }

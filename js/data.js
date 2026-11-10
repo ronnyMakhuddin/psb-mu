@@ -1,15 +1,5 @@
-// Lapisan data: Supabase (produksi) atau memori lokal (Mode Preview).
-import { IS_PREVIEW, SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
-
-// supabase-js v2.45.4 (UMD) disimpan lokal agar tidak bergantung CDN
-const loadSupabase = () => new Promise((resolve, reject) => {
-  if (window.supabase?.createClient) return resolve(window.supabase);
-  const s = document.createElement('script');
-  s.src = '/js/vendor/supabase.js';
-  s.onload = () => resolve(window.supabase);
-  s.onerror = () => reject(new Error('Gagal memuat pustaka Supabase'));
-  document.head.appendChild(s);
-});
+// Lapisan data: API Vercel + Neon Postgres (produksi) atau memori lokal (Mode Preview).
+import { IS_PREVIEW } from './config.js';
 
 export const STATUS = ['menunggu', 'diverifikasi', 'diterima', 'ditolak'];
 export const ROLE_LABEL = {
@@ -31,108 +21,62 @@ export const normHp = (p) => {
   return d.startsWith('62') ? '0' + d.slice(2) : d;
 };
 
-const errMsg = (e) => {
-  const m = e?.message || String(e);
-  if (/Invalid login credentials/i.test(m)) return 'Email atau password salah';
-  if (/Failed to fetch|NetworkError/i.test(m)) return 'Tidak dapat terhubung ke server. Periksa koneksi internet.';
-  return m;
-};
-const unwrap = ({ data, error }) => {
-  if (error) throw new Error(errMsg(error));
-  return data;
+// =====================================================================
+// MODE PRODUKSI: API Vercel (/api/psb) + Neon Postgres
+// =====================================================================
+const TOKEN_KEY = 'psb_staff_token';
+const tokenStore = {
+  get() { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } },
+  set(t) { try { if (t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY); } catch { /* abaikan */ } },
 };
 
-// =====================================================================
-// MODE SUPABASE
-// =====================================================================
-function supabaseApi(sb) {
-  let profile = null;
-
-  const loadProfile = async () => {
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session) { profile = null; return null; }
-    const { data, error } = await sb.from('profiles').select('*, unit:units(id,nama,jenis)').eq('id', session.user.id).maybeSingle();
-    if (error) throw new Error(errMsg(error));
-    if (!data) {
-      await sb.auth.signOut();
-      throw new Error('Akun ini belum memiliki profil petugas. Hubungi admin.');
-    }
-    profile = data;
-    return profile;
-  };
-
-  const callUsersApi = async (method, body) => {
-    const { data: { session } } = await sb.auth.getSession();
-    const r = await fetch('/api/users', {
-      method,
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` },
-      body: JSON.stringify(body),
+async function call(action, body = {}) {
+  let r;
+  try {
+    const token = tokenStore.get();
+    r = await fetch('/api/psb', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ action, ...body }),
     });
-    const j = await r.json().catch(() => ({ error: 'Layanan akun tidak tersedia (pastikan deploy di Vercel)' }));
-    if (!r.ok) throw new Error(j.error || 'Gagal');
-    return j;
-  };
+  } catch {
+    throw new Error('Tidak dapat terhubung ke server. Periksa koneksi internet.');
+  }
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401) tokenStore.set(null);
+  if (!r.ok) throw new Error(j.error || `Terjadi kesalahan (${r.status})`);
+  return j.data;
+}
 
+function serverApi() {
   return {
-    mode: 'supabase',
-    async getPengaturan() { return unwrap(await sb.from('pengaturan').select('*').eq('id', 1).single()); },
-    async updatePengaturan(p) {
-      return unwrap(await sb.from('pengaturan').update({ ...p, updated_at: new Date().toISOString() }).eq('id', 1).select().single());
-    },
-    async listUnits() { return unwrap(await sb.from('units').select('*').order('jenis').order('urutan').order('nama')); },
-    async saveUnit(u) {
-      const { id, ...rest } = u;
-      if (id) return unwrap(await sb.from('units').update(rest).eq('id', id).select().single());
-      return unwrap(await sb.from('units').insert(rest).select().single());
-    },
-    async deleteUnit(id) { unwrap(await sb.from('units').delete().eq('id', id)); },
-    async statistikPublik() { return unwrap(await sb.rpc('statistik_publik')); },
-
-    // Pendaftar (tanpa akun)
-    async daftar(payload) { return unwrap(await sb.rpc('daftar_pendaftar', { p: payload })); },
-    async loginPendaftar(no, hp) { return unwrap(await sb.rpc('login_pendaftar', { p_no: no, p_hp: hp })); },
-    async updateBiodata(no, hp, payload) {
-      return unwrap(await sb.rpc('update_biodata_pendaftar', { p_no: no, p_hp: hp, p: payload }));
-    },
-
-    // Pengumuman
-    async listPengumuman({ onlyVisible = false } = {}) {
-      let q = sb.from('pengumuman').select('*, unit:units(id,nama)').order('created_at', { ascending: false });
-      if (onlyVisible) q = q.eq('tampil', true);
-      return unwrap(await q);
-    },
-    async savePengumuman(p) {
-      const { id, unit, ...rest } = p;
-      if (id) return unwrap(await sb.from('pengumuman').update(rest).eq('id', id).select().single());
-      const { data: { session } } = await sb.auth.getSession();
-      return unwrap(await sb.from('pengumuman').insert({ ...rest, created_by: session?.user?.id }).select().single());
-    },
-    async deletePengumuman(id) { unwrap(await sb.from('pengumuman').delete().eq('id', id)); },
-
-    // Petugas
-    async signIn(email, password) {
-      const { error } = await sb.auth.signInWithPassword({ email, password });
-      if (error) throw new Error(errMsg(error));
-      return loadProfile();
-    },
-    async signOut() { await sb.auth.signOut(); profile = null; },
-    async currentProfile() { return loadProfile(); },
-    async listPendaftar() {
-      return unwrap(await sb.from('pendaftar')
-        .select('*, unit_pendidikan:units!pendaftar_unit_pendidikan_id_fkey(id,nama), unit_asrama:units!pendaftar_unit_asrama_id_fkey(id,nama)')
-        .order('created_at', { ascending: false }));
-    },
-    async updatePendaftar(id, patch) {
-      const clean = { ...patch };
-      delete clean.unit_pendidikan; delete clean.unit_asrama; delete clean.id;
-      return unwrap(await sb.from('pendaftar').update(clean).eq('id', id).select().single());
-    },
-    async deletePendaftar(id) { unwrap(await sb.from('pendaftar').delete().eq('id', id)); },
-    async listProfiles() { return unwrap(await sb.from('profiles').select('*, unit:units(id,nama,jenis)').order('created_at')); },
-    async updateProfile(id, patch) { return unwrap(await sb.from('profiles').update(patch).eq('id', id).select().single()); },
-    async createUser(u) { return callUsersApi('POST', u); },
-    async resetPassword(id, password) { return callUsersApi('PATCH', { id, password }); },
-    async deleteUser(id) { return callUsersApi('DELETE', { id }); },
+    mode: 'api',
+    getPengaturan: () => call('getPengaturan'),
+    updatePengaturan: (data) => call('updatePengaturan', { data }),
+    listUnits: () => call('listUnits'),
+    saveUnit: (data) => call('saveUnit', { data }),
+    deleteUnit: (id) => call('deleteUnit', { id }),
+    statistikPublik: () => call('statistikPublik'),
+    daftar: (payload) => call('daftar', { payload }),
+    loginPendaftar: (no, hp) => call('loginPendaftar', { no, hp }),
+    updateBiodata: (no, hp, payload) => call('updateBiodata', { no, hp, payload }),
+    listPengumuman: ({ onlyVisible = false } = {}) => call('listPengumuman', { onlyVisible }),
+    savePengumuman: (data) => call('savePengumuman', { data }),
+    deletePengumuman: (id) => call('deletePengumuman', { id }),
+    setupStatus: () => call('setupStatus'),
+    async setupAdmin(data) { const r = await call('setupAdmin', data); tokenStore.set(r.token); return r.profile; },
+    async signIn(email, password) { const r = await call('signIn', { email, password }); tokenStore.set(r.token); return r.profile; },
+    async signOut() { tokenStore.set(null); },
+    async currentProfile() { return tokenStore.get() ? call('me') : null; },
+    changePassword: (oldPassword, newPassword) => call('changePassword', { oldPassword, newPassword }),
+    listPendaftar: () => call('listPendaftar'),
+    updatePendaftar: (id, patch) => call('updatePendaftar', { id, patch }),
+    deletePendaftar: (id) => call('deletePendaftar', { id }),
+    listProfiles: () => call('listProfiles'),
+    updateProfile: (id, patch) => call('updateProfile', { id, patch }),
+    createUser: (data) => call('createUser', { data }),
+    resetPassword: (id, password) => call('resetPassword', { id, password }),
+    deleteUser: (id) => call('deleteUser', { id }),
   };
 }
 
@@ -253,6 +197,9 @@ function previewApi() {
       if (!p) throw new Error('Email atau password salah');
       me = p; return this.currentProfile();
     },
+    async setupStatus() { return { needed: false }; },
+    async setupAdmin() { throw new Error('Tidak tersedia di Mode Preview'); },
+    async changePassword() { return { ok: true }; },
     async signOut() { me = null; },
     async currentProfile() { return me ? delay({ ...me, unit: pick(unitById(me.unit_id)) }) : null; },
     async listPendaftar() { return delay(db.pendaftar.filter(canSee).map(withUnits)); },
@@ -288,21 +235,13 @@ function previewApi() {
 // =====================================================================
 export async function initData() {
   if (IS_PREVIEW === true) return previewApi();
-  let url = SUPABASE_URL;
-  let key = SUPABASE_ANON_KEY;
-  if (!url || !key) {
-    try {
-      const r = await fetch('/api/config', { cache: 'no-store' });
-      if (r.ok && (r.headers.get('content-type') || '').includes('json')) {
-        const c = await r.json();
-        url = c.supabaseUrl; key = c.supabaseAnonKey;
-      }
-    } catch { /* tidak ada API (mis. dibuka lokal) */ }
-  }
-  if (!url || !key) {
-    if (IS_PREVIEW === false) throw new Error('SUPABASE_URL dan SUPABASE_ANON_KEY belum diatur.');
-    return previewApi();
-  }
-  const { createClient } = await loadSupabase();
-  return supabaseApi(createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true } }));
+  if (IS_PREVIEW === false) return serverApi();
+  try {
+    const r = await fetch('/api/config', { cache: 'no-store' });
+    if (r.ok && (r.headers.get('content-type') || '').includes('json')) {
+      const c = await r.json();
+      if (c.backend === 'api') return serverApi();
+    }
+  } catch { /* tidak ada API (mis. dibuka lokal tanpa server) */ }
+  return previewApi();
 }

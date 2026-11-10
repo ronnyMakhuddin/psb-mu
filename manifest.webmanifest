@@ -1,0 +1,13 @@
+{
+  "name": "PSB Mamba'ul Ulum",
+  "short_name": "PSB MU",
+  "description": "Penerimaan Santri Baru Yayasan Induk Mamba'ul Ulum Awang-awang Mojosari Mojokerto",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7FAF8",
+  "theme_color": "#1E7A4C",
+  "icons": [
+    { "src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

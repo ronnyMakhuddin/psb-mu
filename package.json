@@ -1,0 +1,11 @@
+{
+  "name": "psb-mu",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Aplikasi Penerimaan Santri Baru Yayasan Induk Mamba'ul Ulum",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "engines": { "node": ">=18" }
+}

@@ -12,7 +12,7 @@ Database **Neon Postgres** (gratis) dan hosting **Vercel**. Semua akses data lew
 
 **Admin**
 - Dashboard statistik, semua data pendaftar (cari, filter, verifikasi, edit, hapus, export CSV, hubungi via WhatsApp, cetak bukti).
-- Kelola unit pendidikan & asrama (kuota, aktif/nonaktif).
+- Kelola unit pendidikan & asrama (kuota, aktif/nonaktif, link brosur, WhatsApp operator, Instagram, Facebook, TikTok, YouTube, website). Tombolnya tampil di kartu unit pada beranda.
 - Kelola akun petugas (tambah, ubah role/unit, reset password, hapus).
 - Pengumuman (umum atau per unit) dan pengaturan PSB (tahun ajaran, gelombang, buka/tutup pendaftaran, awalan nomor, WA panitia, info pendaftaran).
 
@@ -53,7 +53,7 @@ js/vendor/            Ikon lucide (disimpan lokal)
 api/psb.js            Satu endpoint API untuk semua aksi
 api/config.js         Memberi tahu browser apakah database sudah tersambung
 api/_lib/             Koneksi database, pembuatan tabel otomatis & token login petugas
-database/schema.sql   Skema PostgreSQL (tabel & fungsi); setelah diubah jalankan `npm run schema`
+database/schema.sql   Skema PostgreSQL (tabel & fungsi); setelah diubah naikkan schema_version (juga di api/_lib/db.js) lalu jalankan `npm run schema`
 ```
 
 ## Keamanan

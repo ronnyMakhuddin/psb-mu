@@ -169,7 +169,11 @@ textarea.input { min-height: 96px; resize: vertical; }
 .step { display: flex; gap: 14px; align-items: flex-start; }
 .step .num { width: 40px; height: 40px; border-radius: 12px; background: var(--green-700); color: #fff; display: grid; place-items: center; font-weight: 800; flex-shrink: 0; }
 .unit-card { display: flex; gap: 12px; align-items: center; }
-.unit-card .ic { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--green-50); color: var(--green-700); }
+.unit-card-wrap { display: flex; flex-direction: column; gap: 12px; }
+.unit-actions { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 12px; border-top: 1px dashed var(--border); }
+.unit-actions .btn-sm { height: 32px; padding: 0 10px; font-size: 12.5px; }
+.unit-actions [data-lucide], .unit-actions svg { width: 16px; height: 16px; }
+.unit-card-wrap .ic, .unit-card .ic { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--green-50); color: var(--green-700); }
 .unit-card .ic.asrama { background: var(--gold-100); color: var(--gold-700); }
 .footer { text-align: center; color: var(--muted); font-size: 13px; padding: 32px 16px 40px; }
 .page-head { margin: 8px 0 20px; }

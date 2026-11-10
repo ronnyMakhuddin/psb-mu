@@ -170,9 +170,13 @@ const actions = {
     const nama = str(data.nama, 150);
     if (!nama) throw httpError(400, 'Nama unit wajib diisi');
     if (!['pendidikan', 'asrama'].includes(data.jenis)) throw httpError(400, 'Jenis unit tidak valid');
-    const p = [nama, data.jenis, str(data.keterangan, 300), Number(data.kuota) || 0, data.aktif !== false, Number(data.urutan) || 0];
-    if (data.id) return (await q('update units set nama=$1, jenis=$2, keterangan=$3, kuota=$4, aktif=$5, urutan=$6 where id=$7 returning *', [...p, data.id])).rows[0];
-    return (await q('insert into units (nama, jenis, keterangan, kuota, aktif, urutan) values ($1,$2,$3,$4,$5,$6) returning *', p)).rows[0];
+    const p = [nama, data.jenis, str(data.keterangan, 300), Number(data.kuota) || 0, data.aktif !== false, Number(data.urutan) || 0,
+      str(data.wa_operator, 30), str(data.instagram, 200), str(data.facebook, 200), str(data.tiktok, 200), str(data.youtube, 200), str(data.website, 200), str(data.brosur, 500)];
+    const cols = 'nama, jenis, keterangan, kuota, aktif, urutan, wa_operator, instagram, facebook, tiktok, youtube, website, brosur';
+    if (data.id) {
+      return (await q(`update units set (${cols}) = ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) where id = $14 returning *`, [...p, data.id])).rows[0];
+    }
+    return (await q(`insert into units (${cols}) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) returning *`, p)).rows[0];
   },
   async deleteUnit({ id }, staff) {
     requireAdmin(staff);

@@ -1,6 +1,9 @@
 import pg from 'pg';
 import { SCHEMA_SQL } from './schema.js';
 
+// Naikkan bersama nilai schema_version di database/schema.sql setiap ada perubahan skema
+const SCHEMA_VERSION = '2';
+
 const conn = process.env.DATABASE_URL || process.env.POSTGRES_URL || '';
 let pool = globalThis.__psbPool;
 
@@ -38,16 +41,18 @@ export function httpError(status, message) {
   return Object.assign(new Error(message), { status });
 }
 
-// Membuat tabel & fungsi otomatis saat database masih kosong (sekali per cold start).
+// Membuat/memperbarui tabel & fungsi otomatis bila versi skema di database berbeda (sekali per cold start).
 let schemaReady = globalThis.__psbSchemaReady || null;
 export function ensureSchema() {
   if (!schemaReady) {
     schemaReady = (async () => {
       const client = await db().connect();
       try {
-        const { rows } = await client.query(
-          "select to_regclass('public.pengaturan') is not null and to_regclass('public.petugas') is not null and to_regprocedure('public.daftar_pendaftar(jsonb)') is not null as ok");
-        if (rows[0].ok) return;
+        const meta = await client.query("select to_regclass('public.app_meta') is not null as ok");
+        if (meta.rows[0].ok) {
+          const { rows } = await client.query("select value from public.app_meta where key = 'schema_version'");
+          if (rows[0]?.value === SCHEMA_VERSION) return;
+        }
         await client.query('select pg_advisory_lock(727001)');
         try { await client.query(SCHEMA_SQL); } finally { await client.query('select pg_advisory_unlock(727001)'); }
       } finally { client.release(); }

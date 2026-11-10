@@ -20,6 +20,14 @@ create table if not exists public.units (
   urutan      int  not null default 0,
   created_at  timestamptz not null default now()
 );
+-- kontak & media sosial per unit (v2)
+alter table public.units add column if not exists wa_operator text;
+alter table public.units add column if not exists instagram   text;
+alter table public.units add column if not exists facebook    text;
+alter table public.units add column if not exists tiktok      text;
+alter table public.units add column if not exists youtube     text;
+alter table public.units add column if not exists website     text;
+alter table public.units add column if not exists brosur      text;
 
 create table if not exists public.petugas (
   id            uuid primary key default gen_random_uuid(),
@@ -267,3 +275,9 @@ select * from (values
 ) v(nama, jenis, keterangan, kuota, urutan)
 where not exists (select 1 from public.units);
 
+-- ---------------------------------------------------------------------
+-- VERSI SKEMA (dipakai API untuk menjalankan pembaruan otomatis)
+-- ---------------------------------------------------------------------
+create table if not exists public.app_meta (key text primary key, value text);
+insert into public.app_meta (key, value) values ('schema_version', '2')
+on conflict (key) do update set value = excluded.value;

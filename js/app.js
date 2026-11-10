@@ -27,6 +27,32 @@ const waLink = (hp, text = '') => {
   return `https://wa.me/${n}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
 };
 
+// Tautan sosmed: terima URL lengkap atau sekadar nama akun
+const SOSMED = [
+  { k: 'instagram', l: 'Instagram', icon: 'instagram', url: (v) => `https://instagram.com/${v.replace(/^@/, '')}` },
+  { k: 'facebook', l: 'Facebook', icon: 'facebook', url: (v) => `https://facebook.com/${v.replace(/^@/, '')}` },
+  { k: 'tiktok', l: 'TikTok', icon: null, url: (v) => `https://www.tiktok.com/@${v.replace(/^@/, '')}` },
+  { k: 'youtube', l: 'YouTube', icon: 'youtube', url: (v) => `https://youtube.com/@${v.replace(/^@/, '')}` },
+  { k: 'website', l: 'Website', icon: 'globe', url: (v) => `https://${v}` },
+];
+const TIKTOK_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M16.6 5.82A4.28 4.28 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 1 1-2.59-2.6c.27 0 .53.04.77.12V9.77a5.7 5.7 0 0 0-.77-.05A5.7 5.7 0 1 0 15.56 15.4V9.01a7.3 7.3 0 0 0 4.27 1.37V7.3a4.28 4.28 0 0 1-3.23-1.48Z"/></svg>';
+const sosmedUrl = (s, v) => (/^https?:\/\//i.test(v) ? v : s.url(v.replace(/^https?:\/\//i, '').trim()));
+function unitActions(u) {
+  const btns = [];
+  if (u.wa_operator) {
+    btns.push(`<a class="btn btn-sm btn-primary" target="_blank" rel="noopener" href="${esc(waLink(u.wa_operator, `Assalamualaikum, saya ingin bertanya tentang pendaftaran ${u.nama}.`))}">${ic('message-circle')} WA Operator</a>`);
+  }
+  if (u.brosur) {
+    const href = /^https?:\/\//i.test(u.brosur) ? u.brosur : `https://${u.brosur}`;
+    btns.push(`<a class="btn btn-sm btn-gold" target="_blank" rel="noopener" href="${esc(href)}">${ic('file-text')} Brosur</a>`);
+  }
+  SOSMED.forEach((s) => {
+    const v = String(u[s.k] || '').trim();
+    if (v) btns.push(`<a class="btn btn-sm btn-outline sosmed" target="_blank" rel="noopener" href="${esc(sosmedUrl(s, v))}" title="${s.l}" aria-label="${s.l} ${esc(u.nama)}">${s.icon ? ic(s.icon) : TIKTOK_SVG}<span>${s.l}</span></a>`);
+  });
+  return btns.length ? `<div class="unit-actions">${btns.join('')}</div>` : '';
+}
+
 const store = {
   get(k) { try { return JSON.parse(sessionStorage.getItem(k)); } catch { return null; } },
   set(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch { /* abaikan */ } },
@@ -230,10 +256,13 @@ async function pageHome() {
   const st = S.settings;
   const open = st.pendaftaran_buka;
   const unitCard = (u) => `
-    <div class="card unit-card">
-      <div class="ic ${u.jenis}">${ic(u.jenis === 'asrama' ? 'house' : 'graduation-cap')}</div>
-      <div class="grow"><b>${esc(u.nama)}</b><div class="small muted">${esc(u.keterangan || (u.jenis === 'asrama' ? 'Asrama' : 'Unit Pendidikan'))}</div></div>
-      ${u.kuota ? `<span class="badge neutral">Kuota ${u.kuota}</span>` : ''}
+    <div class="card unit-card-wrap">
+      <div class="unit-card">
+        <div class="ic ${u.jenis}">${ic(u.jenis === 'asrama' ? 'house' : 'graduation-cap')}</div>
+        <div class="grow"><b>${esc(u.nama)}</b><div class="small muted">${esc(u.keterangan || (u.jenis === 'asrama' ? 'Asrama' : 'Unit Pendidikan'))}</div></div>
+        ${u.kuota ? `<span class="badge neutral">Kuota ${u.kuota}</span>` : ''}
+      </div>
+      ${unitActions(u)}
     </div>`;
   const pend = S.units.filter((u) => u.jenis === 'pendidikan');
   const asr = S.units.filter((u) => u.jenis === 'asrama');
@@ -873,7 +902,7 @@ async function adminUnit() {
     const us = S.units.filter((u) => u.jenis === jenis);
     return `<div class="card"><h3>${ic(jenis === 'asrama' ? 'house' : 'graduation-cap')} ${title}</h3>
       ${us.length ? `<div class="table-wrap"><table class="tbl"><thead><tr><th>Nama</th><th>Keterangan</th><th>Pendaftar / Kuota</th><th>Status</th><th></th></tr></thead><tbody>
-        ${us.map((u) => `<tr><td><b>${esc(u.nama)}</b></td><td class="small">${esc(u.keterangan || '-')}</td>
+        ${us.map((u) => `<tr><td><b>${esc(u.nama)}</b></td><td class="small">${esc(u.keterangan || '-')}${u.wa_operator ? `<br><span class="muted">WA: ${esc(u.wa_operator)}</span>` : ''}</td>
           <td>${list.filter((d) => d.unit_pendidikan_id === u.id || d.unit_asrama_id === u.id).length} / ${u.kuota || '∞'}</td>
           <td>${u.aktif ? '<span class="badge diterima">Aktif</span>' : '<span class="badge ditolak">Nonaktif</span>'}</td>
           <td style="text-align:right;white-space:nowrap"><button class="btn btn-ghost btn-icon" data-edit="${u.id}" aria-label="Ubah">${ic('pencil')}</button><button class="btn btn-ghost btn-icon" data-del="${u.id}" aria-label="Hapus">${ic('trash-2')}</button></td></tr>`).join('')}
@@ -898,6 +927,11 @@ function editUnit(u = { jenis: 'pendidikan', aktif: true, kuota: 0, urutan: 0 })
       <div class="field full"><label>Keterangan</label><input class="input" name="keterangan" value="${esc(u.keterangan || '')}"></div>
       <div class="field"><label>Urutan</label><input class="input" type="number" name="urutan" value="${esc(u.urutan ?? 0)}"></div>
       <div class="field" style="align-self:end"><label class="switch"><input type="checkbox" name="aktif" ${u.aktif ? 'checked' : ''}> Aktif</label></div>
+      <div class="section-title">${ic('share-2')} Brosur, Kontak &amp; Media Sosial (tampil di beranda)</div>
+      <div class="field full"><label>Link Brosur</label><input class="input" name="brosur" type="text" inputmode="url" placeholder="Link Google Drive / PDF / gambar brosur" value="${esc(u.brosur || '')}"><div class="hint">Pastikan link bisa dibuka publik (mis. Google Drive: Bagikan → Siapa saja yang memiliki link).</div></div>
+      <div class="field full"><label>WhatsApp Operator</label><input class="input" name="wa_operator" type="tel" inputmode="tel" placeholder="08xxxxxxxxxx" value="${esc(u.wa_operator || '')}"></div>
+      ${SOSMED.map((s) => `<div class="field ${s.k === 'website' ? 'full' : ''}"><label>${s.l}</label><input class="input" name="${s.k}" placeholder="${s.k === 'website' ? 'contoh: mambaulummojosari.sch.id' : 'nama akun atau link'}" value="${esc(u[s.k] || '')}"></div>`).join('')}
+      <div class="hint full" style="grid-column:1/-1">Kosongkan yang tidak dimiliki; tombolnya otomatis tidak ditampilkan.</div>
     </form>`,
     foot: `<button class="btn btn-outline" data-close>Batal</button><button class="btn btn-primary" id="u-save">${ic('save')} Simpan</button>`,
   });
@@ -905,7 +939,10 @@ function editUnit(u = { jenis: 'pendidikan', aktif: true, kuota: 0, urutan: 0 })
     const f = m.querySelector('#u-form');
     if (!f.reportValidity()) return;
     const v = formData(f);
-    await S.api.saveUnit({ id: u.id, nama: v.nama, jenis: v.jenis, keterangan: v.keterangan, kuota: Number(v.kuota) || 0, urutan: Number(v.urutan) || 0, aktif: v.aktif });
+    await S.api.saveUnit({
+      id: u.id, nama: v.nama, jenis: v.jenis, keterangan: v.keterangan, kuota: Number(v.kuota) || 0, urutan: Number(v.urutan) || 0, aktif: v.aktif,
+      wa_operator: v.wa_operator, instagram: v.instagram, facebook: v.facebook, tiktok: v.tiktok, youtube: v.youtube, website: v.website, brosur: v.brosur,
+    });
     closeModal(); toast('Unit disimpan'); adminUnit();
   });
 }

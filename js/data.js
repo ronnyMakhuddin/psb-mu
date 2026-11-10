@@ -92,9 +92,9 @@ function previewApi() {
       info_pendaftaran: 'Pendaftaran dibuka mulai 1 Desember 2026. Silakan isi formulir secara lengkap dan simpan nomor pendaftaran Anda.',
     },
     units: [
-      { id: 'u1', nama: "MTs Mamba'ul Ulum", jenis: 'pendidikan', keterangan: 'Madrasah Tsanawiyah', kuota: 120, aktif: true, urutan: 1 },
+      { id: 'u1', nama: "MTs Mamba'ul Ulum", jenis: 'pendidikan', keterangan: 'Madrasah Tsanawiyah', kuota: 120, aktif: true, urutan: 1, wa_operator: '081234567891', instagram: 'mtsmambaululum', facebook: '', tiktok: 'mtsmambaululum', youtube: '', website: '', brosur: 'https://drive.google.com/' },
       { id: 'u2', nama: "SMK Mamba'ul Ulum", jenis: 'pendidikan', keterangan: 'Sekolah Menengah Kejuruan', kuota: 144, aktif: true, urutan: 2 },
-      { id: 'u3', nama: 'Asrama Putra', jenis: 'asrama', keterangan: 'Pondok Pesantren Putra', kuota: 100, aktif: true, urutan: 1 },
+      { id: 'u3', nama: 'Asrama Putra', jenis: 'asrama', keterangan: 'Pondok Pesantren Putra', kuota: 100, aktif: true, urutan: 1, wa_operator: '081234567892', instagram: 'ppmambaululum', facebook: 'ppmambaululum', tiktok: '', youtube: 'ppmambaululum', website: '' },
       { id: 'u4', nama: 'Asrama Putri', jenis: 'asrama', keterangan: 'Pondok Pesantren Putri', kuota: 100, aktif: true, urutan: 2 },
     ],
     profiles: [

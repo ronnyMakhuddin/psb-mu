@@ -46,9 +46,6 @@ const actions = {
     const where = staff ? '' : 'where aktif';
     return (await q(`select * from units ${where} order by jenis, urutan, nama`)).rows;
   },
-  async statistikPublik() {
-    return (await q('select statistik_publik() as s')).rows[0].s;
-  },
   async listPengumuman({ onlyVisible }, staff) {
     const where = onlyVisible || !staff ? 'where n.tampil' : '';
     return (await q(`select n.*, case when u.id is null then null else json_build_object('id', u.id, 'nama', u.nama) end as unit

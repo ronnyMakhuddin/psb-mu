@@ -56,7 +56,6 @@ function serverApi() {
     listUnits: () => call('listUnits'),
     saveUnit: (data) => call('saveUnit', { data }),
     deleteUnit: (id) => call('deleteUnit', { id }),
-    statistikPublik: () => call('statistikPublik'),
     daftar: (payload) => call('daftar', { payload }),
     loginPendaftar: (no, hp) => call('loginPendaftar', { no, hp }),
     updateBiodata: (no, hp, payload) => call('updateBiodata', { no, hp, payload }),
@@ -152,9 +151,6 @@ function previewApi() {
       const n = { ...u, id: uid() }; db.units.push(n); return delay(n);
     },
     async deleteUnit(id) { db.units = db.units.filter((u) => u.id !== id); },
-    async statistikPublik() {
-      return delay({ total: db.pendaftar.length, per_unit: db.units.map((u) => ({ unit_id: u.id, jumlah: db.pendaftar.filter((p) => p.unit_pendidikan_id === u.id || p.unit_asrama_id === u.id).length })) });
-    },
     async daftar(p) {
       if (!db.pengaturan.pendaftaran_buka) throw new Error('Pendaftaran sedang ditutup');
       if (normHp(p.no_hp).length < 9) throw new Error('Nomor HP tidak valid');

@@ -223,18 +223,17 @@ function publicLayout(content) {
 // ---------------------------------------------------------------------
 async function pageHome() {
   publicLayout(loadingHtml);
-  let news = [], stat = { total: 0, per_unit: [] };
+  let news = [];
   try {
-    [news, stat] = await Promise.all([S.api.listPengumuman({ onlyVisible: true }), S.api.statistikPublik()]);
+    news = await S.api.listPengumuman({ onlyVisible: true });
   } catch (e) { toast(e.message, 'error'); }
   const st = S.settings;
   const open = st.pendaftaran_buka;
-  const count = (id) => stat?.per_unit?.find((x) => x.unit_id === id)?.jumlah || 0;
   const unitCard = (u) => `
     <div class="card unit-card">
       <div class="ic ${u.jenis}">${ic(u.jenis === 'asrama' ? 'house' : 'graduation-cap')}</div>
       <div class="grow"><b>${esc(u.nama)}</b><div class="small muted">${esc(u.keterangan || (u.jenis === 'asrama' ? 'Asrama' : 'Unit Pendidikan'))}</div></div>
-      <span class="badge neutral">${count(u.id)}${u.kuota ? ` / ${u.kuota}` : ''} pendaftar</span>
+      ${u.kuota ? `<span class="badge neutral">Kuota ${u.kuota}</span>` : ''}
     </div>`;
   const pend = S.units.filter((u) => u.jenis === 'pendidikan');
   const asr = S.units.filter((u) => u.jenis === 'asrama');
@@ -250,7 +249,6 @@ async function pageHome() {
           ${open ? `<a class="btn btn-primary" href="#/daftar">${ic('pen-line')} Daftar Sekarang</a>` : ''}
           <a class="btn btn-outline" href="#/masuk">${ic('search-check')} Cek Status Pendaftaran</a>
         </div>
-        <p class="small muted mt">${ic('users', 'style="width:14px;height:14px;vertical-align:-2px"')} ${stat?.total || 0} calon santri telah mendaftar</p>
       </div>
       <div class="logo-wrap"><img src="/assets/logo.png" alt="Logo Yayasan Induk Mamba'ul Ulum"></div>
     </section>

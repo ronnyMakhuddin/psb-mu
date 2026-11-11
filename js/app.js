@@ -68,6 +68,41 @@ function kontakHtml(list, pesan = 'Assalamualaikum, saya ingin bertanya tentang 
     </div>`).join('')}</div>`;
 }
 
+// Kartu ringkas bertab: Informasi | Syarat, isi dipotong dengan tombol "Lihat selengkapnya"
+function infoTabsHtml(st) {
+  const tabs = [
+    st.info_pendaftaran && { k: 'info', l: 'Informasi', icon: 'info', text: st.info_pendaftaran },
+    st.syarat_pendaftaran && { k: 'syarat', l: 'Syarat Pendaftaran', icon: 'clipboard-list', text: st.syarat_pendaftaran },
+  ].filter(Boolean);
+  if (!tabs.length) return '';
+  return `<div class="card mb info-tabs" id="info">
+    <div class="tabs" role="tablist">${tabs.map((t, i) => `<button type="button" role="tab" data-info-tab="${t.k}" class="${i === 0 ? 'on' : ''}" aria-selected="${i === 0}">${ic(t.icon, 'style="width:15px;height:15px;vertical-align:-3px"')} ${t.l}</button>`).join('')}</div>
+    ${tabs.map((t, i) => `<div class="info-pane" data-info-pane="${t.k}" ${i === 0 ? '' : 'hidden'}>
+      <div class="clamp">${syaratHtml(t.text)}</div>
+      <button type="button" class="btn btn-ghost btn-sm more" data-more hidden>${ic('chevron-down')} Lihat selengkapnya</button>
+    </div>`).join('')}
+  </div>`;
+}
+function initInfoTabs() {
+  const box = document.getElementById('info');
+  if (!box) return;
+  const checkMore = () => box.querySelectorAll('.info-pane:not([hidden])').forEach((p) => {
+    const c = p.querySelector('.clamp');
+    const fits = c.scrollHeight <= c.clientHeight + 4;
+    c.classList.toggle('fits', fits);
+    p.querySelector('[data-more]').hidden = c.classList.contains('open') || fits;
+  });
+  box.querySelectorAll('[data-info-tab]').forEach((b) => b.addEventListener('click', () => {
+    box.querySelectorAll('[data-info-tab]').forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', x === b); });
+    box.querySelectorAll('[data-info-pane]').forEach((p) => { p.hidden = p.dataset.infoPane !== b.dataset.infoTab; });
+    checkMore();
+  }));
+  box.querySelectorAll('[data-more]').forEach((b) => b.addEventListener('click', () => {
+    b.previousElementSibling.classList.add('open'); b.hidden = true;
+  }));
+  checkMore();
+}
+
 const store = {
   get(k) { try { return JSON.parse(sessionStorage.getItem(k)); } catch { return null; } },
   set(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch { /* abaikan */ } },
@@ -297,9 +332,7 @@ async function pageHome() {
       <div class="logo-wrap"><img src="/assets/logo.png" alt="Logo Yayasan Induk Mamba'ul Ulum"></div>
     </section>
 
-    ${st.info_pendaftaran ? `<div class="card mb"><h3>${ic('info')} Informasi Pendaftaran</h3><p style="margin:0;white-space:pre-line">${esc(st.info_pendaftaran)}</p></div>` : ''}
-
-    ${st.syarat_pendaftaran ? `<div class="card mb" id="syarat"><h3>${ic('clipboard-list')} Syarat Pendaftaran</h3>${syaratHtml(st.syarat_pendaftaran)}</div>` : ''}
+    ${infoTabsHtml(st)}
 
     <h2 class="mt" style="font-size:20px">Alur Pendaftaran</h2>
     <div class="grid-3 mb">
@@ -324,6 +357,7 @@ async function pageHome() {
         ${st.kontak_wa ? `<div class="card"><h3>${ic('phone')} Butuh bantuan?</h3><p class="muted small" style="margin-top:0">Hubungi panitia PSB melalui WhatsApp.</p><a class="btn btn-gold" target="_blank" rel="noopener" href="${waLink(st.kontak_wa, 'Assalamualaikum, saya ingin bertanya tentang PSB Mamba\'ul Ulum')}">${ic('message-circle')} ${esc(st.kontak_wa)}</a></div>` : ''}
       </div>
     </div>`);
+  initInfoTabs();
 }
 
 const newsHtml = (n) => `

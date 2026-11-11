@@ -51,7 +51,7 @@ body::before {
 h1, h2, h3, h4 { line-height: 1.15; margin: 0 0 .4em; letter-spacing: -0.01em; }
 a { color: var(--green-700); }
 img { max-width: 100%; }
-.hidden { display: none !important; }
+.hidden, [hidden] { display: none !important; }
 .muted { color: var(--muted); }
 .small { font-size: 13px; }
 .center { text-align: center; }
@@ -176,6 +176,13 @@ textarea.input { min-height: 96px; resize: vertical; }
 .unit-card-wrap .ic, .unit-card .ic { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--green-50); color: var(--green-700); }
 .unit-card .ic.asrama { background: var(--gold-100); color: var(--gold-700); }
 .syarat-text { margin: 0; white-space: pre-line; line-height: 1.7; }
+.info-tabs .tabs { justify-content: flex-start; }
+.info-tabs .tabs button { flex: 0 1 auto; }
+.info-pane .clamp { max-height: 168px; overflow: hidden; position: relative; }
+.info-pane .clamp::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 48px; background: linear-gradient(transparent, var(--surface-solid)); pointer-events: none; }
+.info-pane .clamp.open { max-height: none; }
+.info-pane .clamp.open::after, .info-pane .clamp.fits::after { display: none; }
+.info-pane .more { margin-top: 6px; padding-left: 0; }
 .syarat-details summary { cursor: pointer; font-weight: 700; color: var(--green-800); display: flex; gap: 8px; align-items: center; }
 .kontak-grid { display: flex; flex-direction: column; gap: 10px; }
 .kontak { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 14px; background: rgba(255,255,255,.7); }

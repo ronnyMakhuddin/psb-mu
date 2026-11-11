@@ -175,6 +175,8 @@ textarea.input { min-height: 96px; resize: vertical; }
 .unit-actions [data-lucide], .unit-actions svg { width: 16px; height: 16px; }
 .unit-card-wrap .ic, .unit-card .ic { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--green-50); color: var(--green-700); }
 .unit-card .ic.asrama { background: var(--gold-100); color: var(--gold-700); }
+.syarat-text { margin: 0; white-space: pre-line; line-height: 1.7; }
+.syarat-details summary { cursor: pointer; font-weight: 700; color: var(--green-800); display: flex; gap: 8px; align-items: center; }
 .footer { text-align: center; color: var(--muted); font-size: 13px; padding: 32px 16px 40px; }
 .page-head { margin: 8px 0 20px; }
 .page-head h2 { font-size: 24px; font-weight: 800; color: var(--green-900); }

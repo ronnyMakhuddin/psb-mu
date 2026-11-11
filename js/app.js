@@ -53,6 +53,9 @@ function unitActions(u) {
   return btns.length ? `<div class="unit-actions">${btns.join('')}</div>` : '';
 }
 
+// Syarat pendaftaran ditampilkan sebagai teks biasa, apa adanya seperti yang ditulis admin
+const syaratHtml = (text) => `<p class="syarat-text">${esc(String(text || '').trim())}</p>`;
+
 const store = {
   get(k) { try { return JSON.parse(sessionStorage.getItem(k)); } catch { return null; } },
   set(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch { /* abaikan */ } },
@@ -284,6 +287,8 @@ async function pageHome() {
 
     ${st.info_pendaftaran ? `<div class="card mb"><h3>${ic('info')} Informasi Pendaftaran</h3><p style="margin:0;white-space:pre-line">${esc(st.info_pendaftaran)}</p></div>` : ''}
 
+    ${st.syarat_pendaftaran ? `<div class="card mb" id="syarat"><h3>${ic('clipboard-list')} Syarat Pendaftaran</h3>${syaratHtml(st.syarat_pendaftaran)}</div>` : ''}
+
     <h2 class="mt" style="font-size:20px">Alur Pendaftaran</h2>
     <div class="grid-3 mb">
       <div class="card step"><div class="num">1</div><div><b>Isi Formulir</b><div class="small muted">Lengkapi data calon santri, orang tua, dan pilih unit pendidikan serta asrama.</div></div></div>
@@ -344,6 +349,7 @@ async function pageDaftar() {
     publicLayout(`
       <div class="narrow">
         <div class="page-head"><h2>Formulir Pendaftaran</h2><p class="muted" style="margin:0">Tahun Ajaran ${esc(st.tahun_ajaran)} · ${esc(st.gelombang)} — Langkah ${cur + 1} dari ${steps.length}: <b>${steps[cur].title}</b></p></div>
+        ${cur === 0 && st.syarat_pendaftaran ? `<details class="card mb syarat-details"><summary>${ic('clipboard-list')} Lihat syarat pendaftaran</summary><div class="mt">${syaratHtml(st.syarat_pendaftaran)}</div></details>` : ''}
         <div class="stepper">${steps.map((_, i) => `<div class="${i <= cur ? 'on' : ''}"></div>`).join('')}</div>
         <form class="card" id="reg-form" novalidate>
           <div class="form-grid">${steps[cur].html(data)}</div>
@@ -1047,7 +1053,8 @@ async function adminPengaturan() {
         <div class="field"><label>Awalan Nomor Pendaftaran</label><input class="input" name="prefix_nomor" required maxlength="6" value="${esc(s.prefix_nomor)}"><div class="hint">Contoh hasil: ${esc(s.prefix_nomor)}${String(new Date().getFullYear()).slice(2)}0001</div></div>
         <div class="field"><label>Nomor WhatsApp Panitia</label><input class="input" name="kontak_wa" value="${esc(s.kontak_wa || '')}" placeholder="08xxxxxxxxxx"></div>
         <div class="field full"><label>Alamat Yayasan</label><input class="input" name="alamat" value="${esc(s.alamat || '')}"></div>
-        <div class="field full"><label>Informasi Pendaftaran (tampil di beranda)</label><textarea class="input" name="info_pendaftaran" rows="5">${esc(s.info_pendaftaran || '')}</textarea><div class="hint">Jadwal, syarat berkas, biaya, dan informasi penting lainnya.</div></div>
+        <div class="field full"><label>Informasi Pendaftaran (tampil di beranda)</label><textarea class="input" name="info_pendaftaran" rows="5">${esc(s.info_pendaftaran || '')}</textarea><div class="hint">Jadwal, biaya, dan informasi penting lainnya.</div></div>
+        <div class="field full"><label>Syarat Pendaftaran (tampil di beranda & formulir)</label><textarea class="input" name="syarat_pendaftaran" rows="12">${esc(s.syarat_pendaftaran || '')}</textarea><div class="hint">Ditampilkan apa adanya sebagai teks (baris baru tetap dipertahankan).</div></div>
       </div>
       <div class="row mt" style="justify-content:flex-end"><button class="btn btn-primary" id="set-save">${ic('save')} Simpan Pengaturan</button></div>
     </form>`);

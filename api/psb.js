@@ -160,9 +160,9 @@ const actions = {
   async updatePengaturan({ data = {} }, staff) {
     requireAdmin(staff);
     return (await q(`update pengaturan set tahun_ajaran = $1, gelombang = $2, pendaftaran_buka = $3, prefix_nomor = $4,
-      kontak_wa = $5, alamat = $6, info_pendaftaran = $7, updated_at = now() where id = 1 returning *`, [
+      kontak_wa = $5, alamat = $6, info_pendaftaran = $7, syarat_pendaftaran = $8, updated_at = now() where id = 1 returning *`, [
       str(data.tahun_ajaran, 20) || '2027/2028', str(data.gelombang, 50) || 'Gelombang 1', data.pendaftaran_buka !== false,
-      (str(data.prefix_nomor, 6) || 'MU').toUpperCase(), str(data.kontak_wa, 30), str(data.alamat, 300), str(data.info_pendaftaran, 10000),
+      (str(data.prefix_nomor, 6) || 'MU').toUpperCase(), str(data.kontak_wa, 30), str(data.alamat, 300), str(data.info_pendaftaran, 10000), str(data.syarat_pendaftaran, 10000),
     ])).rows[0];
   },
   async saveUnit({ data = {} }, staff) {

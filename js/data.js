@@ -89,6 +89,7 @@ function previewApi() {
     pengaturan: {
       id: 1, tahun_ajaran: '2027/2028', gelombang: 'Gelombang 1', pendaftaran_buka: true, prefix_nomor: 'MU',
       kontak_wa: '081234567890', alamat: 'Awang-awang, Mojosari, Mojokerto, Jawa Timur',
+      syarat_pendaftaran: "PERSYARATAN UMUM\n- Beragama Islam dan bersedia mematuhi tata tertib Yayasan Mamba'ul Ulum\n- Sehat jasmani dan rohani\n- Lulus atau akan lulus dari jenjang sebelumnya (SD/MI untuk MTs, SMP/MTs untuk MA/SMK)\n- Bersedia tinggal di asrama bagi yang memilih program pondok\n\nBERKAS YANG DIBAWA SAAT DAFTAR ULANG\n- Fotokopi Akta Kelahiran (2 lembar)\n- Fotokopi Kartu Keluarga (2 lembar)\n- Fotokopi KTP ayah, ibu, atau wali (masing-masing 2 lembar)\n- Fotokopi ijazah/SKL atau rapor semester terakhir (2 lembar)\n- Fotokopi kartu NISN\n- Pas foto 3x4 berwarna (4 lembar)\n- Fotokopi KIP/PKH/KKS bila ada\n- Surat keterangan sehat dari dokter atau puskesmas\n\nKETENTUAN LAIN\n- Mengisi formulir pendaftaran online dengan data yang benar\n- Mengikuti tes seleksi (baca Al-Qur'an dan wawancara) sesuai jadwal dari panitia\n- Menyimpan Nomor Pendaftaran untuk cek status dan daftar ulang",
       info_pendaftaran: 'Pendaftaran dibuka mulai 1 Desember 2026. Silakan isi formulir secara lengkap dan simpan nomor pendaftaran Anda.',
     },
     units: [

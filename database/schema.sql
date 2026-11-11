@@ -52,6 +52,29 @@ create table if not exists public.pengaturan (
   updated_at          timestamptz not null default now()
 );
 insert into public.pengaturan (id) values (1) on conflict (id) do nothing;
+-- syarat pendaftaran (v3): teks bebas, diedit admin di menu Pengaturan
+alter table public.pengaturan add column if not exists syarat_pendaftaran text;
+update public.pengaturan set syarat_pendaftaran = 'PERSYARATAN UMUM
+- Beragama Islam dan bersedia mematuhi tata tertib Yayasan Mamba''ul Ulum
+- Sehat jasmani dan rohani
+- Lulus atau akan lulus dari jenjang sebelumnya (SD/MI untuk MTs, SMP/MTs untuk MA/SMK)
+- Bersedia tinggal di asrama bagi yang memilih program pondok
+
+BERKAS YANG DIBAWA SAAT DAFTAR ULANG
+- Fotokopi Akta Kelahiran (2 lembar)
+- Fotokopi Kartu Keluarga (2 lembar)
+- Fotokopi KTP ayah, ibu, atau wali (masing-masing 2 lembar)
+- Fotokopi ijazah/SKL atau rapor semester terakhir (2 lembar)
+- Fotokopi kartu NISN
+- Pas foto 3x4 berwarna (4 lembar)
+- Fotokopi KIP/PKH/KKS bila ada
+- Surat keterangan sehat dari dokter atau puskesmas
+
+KETENTUAN LAIN
+- Mengisi formulir pendaftaran online dengan data yang benar
+- Mengikuti tes seleksi (baca Al-Qur''an dan wawancara) sesuai jadwal dari panitia
+- Menyimpan Nomor Pendaftaran untuk cek status dan daftar ulang'
+where syarat_pendaftaran is null;
 
 create sequence if not exists public.pendaftar_seq;
 
@@ -279,5 +302,5 @@ where not exists (select 1 from public.units);
 -- VERSI SKEMA (dipakai API untuk menjalankan pembaruan otomatis)
 -- ---------------------------------------------------------------------
 create table if not exists public.app_meta (key text primary key, value text);
-insert into public.app_meta (key, value) values ('schema_version', '2')
+insert into public.app_meta (key, value) values ('schema_version', '3')
 on conflict (key) do update set value = excluded.value;

@@ -51,6 +51,14 @@ const actions = {
     return (await q(`select n.*, case when u.id is null then null else json_build_object('id', u.id, 'nama', u.nama) end as unit
       from pengumuman n left join units u on u.id = n.unit_id ${where} order by n.created_at desc`)).rows;
   },
+  // Kontak petugas yang boleh ditampilkan ke publik (tanpa email)
+  async listKontak() {
+    return (await q(`select p.id, p.nama, p.role, p.no_wa, p.unit_id,
+        case when u.id is null then null else json_build_object('id', u.id, 'nama', u.nama, 'jenis', u.jenis) end as unit
+      from petugas p left join units u on u.id = p.unit_id
+      where p.tampil_kontak and coalesce(p.no_wa, '') <> '' and (u.id is null or u.aktif)
+      order by (p.role = 'admin') desc, u.jenis nulls first, u.urutan, p.nama`)).rows;
+  },
   async daftar({ payload }) {
     return (await q('select daftar_pendaftar($1::jsonb) as d', [JSON.stringify(payload || {})])).rows[0].d;
   },
@@ -191,17 +199,25 @@ const actions = {
     requireAdmin(staff);
     if (!data.email || !data.password || String(data.password).length < 6) throw httpError(400, 'Email dan password (min. 6 karakter) wajib diisi');
     if (!ROLES.includes(data.role)) throw httpError(400, 'Role tidak valid');
-    const { rows } = await q(`insert into petugas (nama, email, password_hash, role, unit_id)
-      values ($1, lower($2), crypt($3, gen_salt('bf')), $4, $5) returning id`,
-    [str(data.nama, 100), str(data.email, 200), String(data.password), data.role, data.role === 'admin' ? null : uuidOrNull(data.unit_id)]);
+    const { rows } = await q(`insert into petugas (nama, email, password_hash, role, unit_id, no_wa, tampil_kontak)
+      values ($1, lower($2), crypt($3, gen_salt('bf')), $4, $5, $6, $7) returning id`,
+    [str(data.nama, 100), str(data.email, 200), String(data.password), data.role, data.role === 'admin' ? null : uuidOrNull(data.unit_id),
+      normHp(data.no_wa) || null, data.tampil_kontak !== false]);
     return { ok: true, id: rows[0].id };
   },
   async updateProfile({ id, patch = {} }, staff) {
     requireAdmin(staff);
     if (!ROLES.includes(patch.role)) throw httpError(400, 'Role tidak valid');
     if (id === staff.id && patch.role !== 'admin') throw httpError(400, 'Tidak bisa menurunkan role akun sendiri');
-    await q('update petugas set nama = $2, role = $3, unit_id = $4 where id = $1',
-      [id, str(patch.nama, 100), patch.role, patch.role === 'admin' ? null : uuidOrNull(patch.unit_id)]);
+    await q('update petugas set nama = $2, role = $3, unit_id = $4, no_wa = $5, tampil_kontak = $6 where id = $1',
+      [id, str(patch.nama, 100), patch.role, patch.role === 'admin' ? null : uuidOrNull(patch.unit_id), normHp(patch.no_wa) || null, patch.tampil_kontak !== false]);
+    return { ok: true };
+  },
+  // Petugas mengubah nama & nomor WA miliknya sendiri
+  async updateMyProfile({ nama, no_wa, tampil_kontak }, staff) {
+    requireStaff(staff);
+    await q('update petugas set nama = $2, no_wa = $3, tampil_kontak = $4 where id = $1',
+      [staff.id, str(nama, 100) || staff.nama, normHp(no_wa) || null, tampil_kontak !== false]);
     return { ok: true };
   },
   async resetPassword({ id, password }, staff) {

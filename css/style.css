@@ -177,6 +177,11 @@ textarea.input { min-height: 96px; resize: vertical; }
 .unit-card .ic.asrama { background: var(--gold-100); color: var(--gold-700); }
 .syarat-text { margin: 0; white-space: pre-line; line-height: 1.7; }
 .syarat-details summary { cursor: pointer; font-weight: 700; color: var(--green-800); display: flex; gap: 8px; align-items: center; }
+.kontak-grid { display: flex; flex-direction: column; gap: 10px; }
+.kontak { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 14px; background: rgba(255,255,255,.7); }
+.kontak-ic { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; background: var(--green-50); color: var(--green-700); flex-shrink: 0; }
+.kontak-ic.asrama { background: var(--gold-100); color: var(--gold-700); }
+.kontak b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .footer { text-align: center; color: var(--muted); font-size: 13px; padding: 32px 16px 40px; }
 .page-head { margin: 8px 0 20px; }
 .page-head h2 { font-size: 24px; font-weight: 800; color: var(--green-900); }

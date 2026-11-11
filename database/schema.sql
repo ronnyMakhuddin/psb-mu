@@ -39,6 +39,9 @@ create table if not exists public.petugas (
   unit_id       uuid references public.units(id) on delete set null,
   created_at    timestamptz not null default now()
 );
+-- kontak WhatsApp petugas (v4)
+alter table public.petugas add column if not exists no_wa text;
+alter table public.petugas add column if not exists tampil_kontak boolean not null default true;
 
 create table if not exists public.pengaturan (
   id                  int primary key default 1 check (id = 1),
@@ -302,5 +305,5 @@ where not exists (select 1 from public.units);
 -- VERSI SKEMA (dipakai API untuk menjalankan pembaruan otomatis)
 -- ---------------------------------------------------------------------
 create table if not exists public.app_meta (key text primary key, value text);
-insert into public.app_meta (key, value) values ('schema_version', '3')
+insert into public.app_meta (key, value) values ('schema_version', '4')
 on conflict (key) do update set value = excluded.value;

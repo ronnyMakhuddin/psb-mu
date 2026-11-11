@@ -25,7 +25,7 @@ function readToken(token) {
 }
 
 export const PROFILE_SQL = `
-  select p.id, p.nama, p.email, p.role, p.unit_id, p.created_at,
+  select p.id, p.nama, p.email, p.role, p.unit_id, p.no_wa, p.tampil_kontak, p.created_at,
     case when u.id is null then null else json_build_object('id', u.id, 'nama', u.nama, 'jenis', u.jenis) end as unit
   from petugas p left join units u on u.id = p.unit_id`;
 

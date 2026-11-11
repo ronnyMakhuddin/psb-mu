@@ -56,6 +56,8 @@ function serverApi() {
     listUnits: () => call('listUnits'),
     saveUnit: (data) => call('saveUnit', { data }),
     deleteUnit: (id) => call('deleteUnit', { id }),
+    listKontak: () => call('listKontak'),
+    updateMyProfile: (data) => call('updateMyProfile', data),
     daftar: (payload) => call('daftar', { payload }),
     loginPendaftar: (no, hp) => call('loginPendaftar', { no, hp }),
     updateBiodata: (no, hp, payload) => call('updateBiodata', { no, hp, payload }),
@@ -99,9 +101,9 @@ function previewApi() {
       { id: 'u4', nama: 'Asrama Putri', jenis: 'asrama', keterangan: 'Pondok Pesantren Putri', kuota: 100, aktif: true, urutan: 2 },
     ],
     profiles: [
-      { id: 'p1', nama: 'Administrator', email: 'admin@preview.id', role: 'admin', unit_id: null },
-      { id: 'p2', nama: 'Operator MTs', email: 'mts@preview.id', role: 'operator_pendidikan', unit_id: 'u1' },
-      { id: 'p3', nama: 'Operator Asrama Putra', email: 'putra@preview.id', role: 'operator_asrama', unit_id: 'u3' },
+      { id: 'p1', nama: 'Administrator', email: 'admin@preview.id', role: 'admin', unit_id: null, no_wa: '081234567890', tampil_kontak: true },
+      { id: 'p2', nama: 'Ustadz Ahmad (Operator MTs)', email: 'mts@preview.id', role: 'operator_pendidikan', unit_id: 'u1', no_wa: '081234567891', tampil_kontak: true },
+      { id: 'p3', nama: 'Ustadz Hasan (Asrama Putra)', email: 'putra@preview.id', role: 'operator_asrama', unit_id: 'u3', no_wa: '081234567892', tampil_kontak: true },
     ],
     pendaftar: [
       {
@@ -152,6 +154,10 @@ function previewApi() {
       const n = { ...u, id: uid() }; db.units.push(n); return delay(n);
     },
     async deleteUnit(id) { db.units = db.units.filter((u) => u.id !== id); },
+    async listKontak() {
+      return delay(db.profiles.filter((p) => p.tampil_kontak && p.no_wa).map((p) => ({ id: p.id, nama: p.nama, role: p.role, no_wa: p.no_wa, unit_id: p.unit_id, unit: pick(unitById(p.unit_id)) })));
+    },
+    async updateMyProfile(d) { Object.assign(me, { nama: d.nama || me.nama, no_wa: normHp(d.no_wa) || null, tampil_kontak: d.tampil_kontak !== false }); return { ok: true }; },
     async daftar(p) {
       if (!db.pengaturan.pendaftaran_buka) throw new Error('Pendaftaran sedang ditutup');
       if (normHp(p.no_hp).length < 9) throw new Error('Nomor HP tidak valid');
@@ -212,10 +218,10 @@ function previewApi() {
     },
     async deletePendaftar(id) { db.pendaftar = db.pendaftar.filter((d) => d.id !== id); },
     async listProfiles() { return delay(db.profiles.map((p) => ({ ...p, unit: pick(unitById(p.unit_id)) }))); },
-    async updateProfile(id, patch) { Object.assign(db.profiles.find((p) => p.id === id), patch); return delay(patch); },
+    async updateProfile(id, patch) { Object.assign(db.profiles.find((p) => p.id === id), { ...patch, no_wa: normHp(patch.no_wa) || null }); return delay(patch); },
     async createUser(u) {
       if (db.profiles.some((p) => p.email === u.email)) throw new Error('Email sudah terdaftar');
-      db.profiles.push({ id: uid(), nama: u.nama, email: u.email, role: u.role, unit_id: u.unit_id || null });
+      db.profiles.push({ id: uid(), nama: u.nama, email: u.email, role: u.role, unit_id: u.unit_id || null, no_wa: normHp(u.no_wa) || null, tampil_kontak: u.tampil_kontak !== false });
       return { ok: true };
     },
     async resetPassword() { return { ok: true }; },

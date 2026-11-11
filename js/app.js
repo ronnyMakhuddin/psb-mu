@@ -56,6 +56,18 @@ function unitActions(u) {
 // Syarat pendaftaran ditampilkan sebagai teks biasa, apa adanya seperti yang ditulis admin
 const syaratHtml = (text) => `<p class="syarat-text">${esc(String(text || '').trim())}</p>`;
 
+// Kartu kontak petugas dengan tombol WhatsApp
+function kontakHtml(list, pesan = 'Assalamualaikum, saya ingin bertanya tentang PSB Mamba\'ul Ulum.') {
+  if (!list.length) return '';
+  const label = (k) => (k.role === 'admin' ? 'Panitia PSB' : k.unit?.nama || ROLE_LABEL[k.role]);
+  return `<div class="kontak-grid">${list.map((k) => `
+    <div class="kontak">
+      <div class="kontak-ic ${k.unit?.jenis === 'asrama' ? 'asrama' : ''}">${ic(k.role === 'admin' ? 'shield-check' : k.unit?.jenis === 'asrama' ? 'house' : 'graduation-cap')}</div>
+      <div class="grow" style="min-width:0"><b>${esc(k.nama)}</b><div class="small muted">${esc(label(k))} · ${esc(k.no_wa)}</div></div>
+      <a class="btn btn-sm btn-primary" target="_blank" rel="noopener" aria-label="WhatsApp ${esc(k.nama)}" href="${esc(waLink(k.no_wa, pesan))}">${ic('message-circle')}<span>WA</span></a>
+    </div>`).join('')}</div>`;
+}
+
 const store = {
   get(k) { try { return JSON.parse(sessionStorage.getItem(k)); } catch { return null; } },
   set(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch { /* abaikan */ } },
@@ -252,9 +264,9 @@ function publicLayout(content) {
 // ---------------------------------------------------------------------
 async function pageHome() {
   publicLayout(loadingHtml);
-  let news = [];
+  let news = [], kontak = [];
   try {
-    news = await S.api.listPengumuman({ onlyVisible: true });
+    [news, kontak] = await Promise.all([S.api.listPengumuman({ onlyVisible: true }), S.api.listKontak().catch(() => [])]);
   } catch (e) { toast(e.message, 'error'); }
   const st = S.settings;
   const open = st.pendaftaran_buka;
@@ -308,6 +320,7 @@ async function pageHome() {
         <div class="card">
           ${pub.length ? pub.map(newsHtml).join('') : emptyHtml('Belum ada pengumuman', 'megaphone')}
         </div>
+        ${kontak.length ? `<div class="card" id="kontak"><h3>${ic('contact')} Kontak Operator</h3><p class="muted small" style="margin-top:0">Tanyakan langsung ke operator unit yang Anda pilih melalui WhatsApp.</p>${kontakHtml(kontak)}</div>` : ''}
         ${st.kontak_wa ? `<div class="card"><h3>${ic('phone')} Butuh bantuan?</h3><p class="muted small" style="margin-top:0">Hubungi panitia PSB melalui WhatsApp.</p><a class="btn btn-gold" target="_blank" rel="noopener" href="${waLink(st.kontak_wa, 'Assalamualaikum, saya ingin bertanya tentang PSB Mamba\'ul Ulum')}">${ic('message-circle')} ${esc(st.kontak_wa)}</a></div>` : ''}
       </div>
     </div>`);
@@ -432,13 +445,15 @@ function pageMasuk() {
 async function pageAkun(tab = 'status') {
   if (!S.applicant) { location.hash = '#/masuk'; return; }
   publicLayout(loadingHtml);
-  let d, news = [];
+  let d, news = [], kontakAll = [];
   try {
-    [d, news] = await Promise.all([S.api.loginPendaftar(S.applicant.no, S.applicant.hp), S.api.listPengumuman({ onlyVisible: true })]);
+    [d, news, kontakAll] = await Promise.all([S.api.loginPendaftar(S.applicant.no, S.applicant.hp), S.api.listPengumuman({ onlyVisible: true }), S.api.listKontak().catch(() => [])]);
   } catch (e) {
     toast(e.message, 'error'); S.applicant = null; store.del('psb_applicant'); location.hash = '#/masuk'; return;
   }
   news = news.filter((n) => !n.unit_id || n.unit_id === d.unit_pendidikan_id || n.unit_id === d.unit_asrama_id);
+  const kontak = kontakAll.filter((k) => k.unit_id && (k.unit_id === d.unit_pendidikan_id || k.unit_id === d.unit_asrama_id));
+  const kontakList = kontak.length ? kontak : kontakAll.filter((k) => k.role === 'admin');
   const locked = ['diterima', 'ditolak'].includes(d.status_pendidikan);
   const tabs = [['status', 'Status'], ['biodata', 'Biodata'], ['pengumuman', `Pengumuman (${news.length})`], ['bukti', 'Bukti Daftar']];
 
@@ -459,7 +474,8 @@ async function pageAkun(tab = 'status') {
           ${d.unit_asrama_id ? `${badge(d.status_asrama)}<p class="small" style="margin:10px 0 0">${msg[d.status_asrama]}</p>
           ${d.catatan_asrama ? `<div class="verify-box mt small"><b>Catatan pengurus asrama:</b><br>${esc(d.catatan_asrama)}</div>` : ''}` : '<span class="muted small">—</span>'}</div>
       </div>
-      ${news[0] ? `<div class="card"><h3>${ic('megaphone')} Pengumuman Terbaru</h3>${newsHtml(news[0])}</div>` : ''}`;
+      ${news[0] ? `<div class="card"><h3>${ic('megaphone')} Pengumuman Terbaru</h3>${newsHtml(news[0])}</div>` : ''}
+      ${kontakList.length ? `<div class="card"><h3>${ic('contact')} Hubungi Operator</h3>${kontakHtml(kontakList, `Assalamualaikum, saya wali dari ${d.nama_lengkap} (No. Pendaftaran ${d.no_pendaftaran}).`)}</div>` : ''}`;
   } else if (tab === 'biodata') {
     body = `
       <form class="card" id="bio-form">
@@ -568,13 +584,28 @@ async function pageSetup() {
 }
 
 function changeOwnPassword() {
+  const me = S.staff;
   const m = openModal({
-    title: 'Ganti Password', size: 'sm',
-    body: `<form id="cp-form" class="form-grid" style="grid-template-columns:1fr">
+    title: 'Profil & Password', size: 'sm',
+    body: `<form id="pf-form" class="form-grid" style="grid-template-columns:1fr">
+      <div class="field"><label for="pf-nama">Nama</label><input class="input" id="pf-nama" name="nama" required value="${esc(me.nama || '')}"></div>
+      <div class="field"><label for="pf-wa">Nomor WhatsApp</label><input class="input" id="pf-wa" name="no_wa" type="tel" inputmode="tel" placeholder="08xxxxxxxxxx" value="${esc(me.no_wa || '')}"></div>
+      <label class="switch"><input type="checkbox" name="tampil_kontak" ${me.tampil_kontak !== false ? 'checked' : ''}> Tampilkan sebagai kontak di beranda</label>
+      <button type="button" class="btn btn-primary" id="pf-save">${ic('save')} Simpan Profil</button>
+    </form>
+    <div class="section-title">${ic('key-round')} Ganti Password</div>
+    <form id="cp-form" class="form-grid" style="grid-template-columns:1fr">
       <div class="field"><label for="cp-old">Password Lama</label><input class="input" id="cp-old" name="old" type="password" required autocomplete="current-password"></div>
       <div class="field"><label for="cp-new">Password Baru</label><input class="input" id="cp-new" name="new" type="password" minlength="6" required autocomplete="new-password"></div>
     </form>`,
     foot: `<button class="btn btn-outline" data-close>Batal</button><button class="btn btn-primary" id="cp-save">${ic('key-round')} Simpan</button>`,
+  });
+  m.querySelector('#pf-save').onclick = (e) => withBusy(e.currentTarget, async () => {
+    const f = m.querySelector('#pf-form');
+    if (!f.reportValidity()) return;
+    await S.api.updateMyProfile(formData(f));
+    S.staff = await S.api.currentProfile();
+    toast('Profil disimpan');
   });
   m.querySelector('#cp-save').onclick = (e) => withBusy(e.currentTarget, async () => {
     const f = m.querySelector('#cp-form');
@@ -609,11 +640,11 @@ function staffLayout(active, title, content, actions = '') {
       <nav class="side-nav">${menu.map(([k, l, i]) => `<a href="#/admin/${k}" class="${k === active ? 'active' : ''}">${ic(i)} ${l}</a>`).join('')}
         <a href="#/" target="_blank">${ic('external-link')} Halaman Publik</a></nav>
       <div class="side-user"><b>${esc(p.nama || p.email)}</b><span style="color:#a6c8b4">${esc(ROLE_LABEL[p.role])}${p.unit ? ` · ${esc(p.unit.nama)}` : ''}</span>
-        <button class="btn btn-sm btn-block" id="chpw">${ic('key-round')} Ganti Password</button>
+        <button class="btn btn-sm btn-block" id="chpw">${ic('user-round-cog')} Profil &amp; Password</button>
         <button class="btn btn-sm btn-block" id="logout">${ic('log-out')} Keluar</button></div>
     </aside>
     <main class="main">
-      <div class="mobile-head"><img src="/assets/logo.png" alt=""><b>PSB Mamba'ul Ulum</b><button class="btn btn-outline btn-icon" id="chpw-m" aria-label="Ganti password">${ic('key-round')}</button><button class="btn btn-outline btn-icon" id="logout-m" aria-label="Keluar">${ic('log-out')}</button></div>
+      <div class="mobile-head"><img src="/assets/logo.png" alt=""><b>PSB Mamba'ul Ulum</b><button class="btn btn-outline btn-icon" id="chpw-m" aria-label="Profil dan password">${ic('user-round-cog')}</button><button class="btn btn-outline btn-icon" id="logout-m" aria-label="Keluar">${ic('log-out')}</button></div>
       <div class="main-top"><h2 class="grow">${esc(title)}</h2>${actions}</div>
       <div id="view">${content}</div>
     </main>
@@ -962,10 +993,11 @@ async function adminPengguna() {
   try { list = await S.api.listProfiles(); } catch (e) { toast(e.message, 'error'); }
   document.getElementById('add').onclick = () => editUser();
   setView(`<div class="card">${list.length ? `<div class="table-wrap"><table class="tbl">
-    <thead><tr><th>Nama</th><th>Role</th><th>Unit</th><th></th></tr></thead><tbody>
+    <thead><tr><th>Nama</th><th>Role</th><th>Unit</th><th>WhatsApp</th><th></th></tr></thead><tbody>
     ${list.map((p) => `<tr><td class="name"><b>${esc(p.nama || '-')}</b><span>${esc(p.email || '')}</span></td>
       <td><span class="badge ${p.role === 'admin' ? 'gold' : 'neutral'}">${esc(ROLE_LABEL[p.role])}</span></td>
       <td>${esc(p.unit?.nama || '—')}</td>
+      <td class="small">${p.no_wa ? `${esc(p.no_wa)}${p.tampil_kontak === false ? ' <span class="muted">(disembunyikan)</span>' : ''}` : '<span class="muted">—</span>'}</td>
       <td style="text-align:right;white-space:nowrap">
         <button class="btn btn-ghost btn-icon" data-edit="${p.id}" aria-label="Ubah">${ic('pencil')}</button>
         <button class="btn btn-ghost btn-icon" data-pw="${p.id}" aria-label="Reset password">${ic('key-round')}</button>
@@ -998,6 +1030,8 @@ function editUser(p = null) {
         : `<div class="field"><label>Email</label><input class="input" value="${esc(v.email || '')}" disabled></div>`}
       <div class="field"><label>Role</label><select class="input" name="role" id="us-role">${Object.entries(ROLE_LABEL).map(([k, l]) => `<option value="${k}" ${v.role === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
       <div class="field" id="us-unit-wrap"><label>Unit</label><select class="input" name="unit_id" id="us-unit">${unitOptions(v.role, v.unit_id)}</select></div>
+      <div class="field"><label>Nomor WhatsApp</label><input class="input" name="no_wa" type="tel" inputmode="tel" placeholder="08xxxxxxxxxx" value="${esc(v.no_wa || '')}"></div>
+      <label class="switch"><input type="checkbox" name="tampil_kontak" ${v.tampil_kontak !== false ? 'checked' : ''}> Tampilkan sebagai kontak di beranda</label>
     </form>`,
     foot: `<button class="btn btn-outline" data-close>Batal</button><button class="btn btn-primary" id="us-save">${ic('save')} Simpan</button>`,
   });
@@ -1015,8 +1049,9 @@ function editUser(p = null) {
     if (!f.reportValidity()) return;
     const d = formData(f);
     const unit_id = d.role === 'admin' ? null : (d.unit_id || null);
-    if (isNew) await S.api.createUser({ nama: d.nama, email: d.email, password: d.password, role: d.role, unit_id });
-    else await S.api.updateProfile(p.id, { nama: d.nama, role: d.role, unit_id });
+    const kontak = { no_wa: d.no_wa, tampil_kontak: d.tampil_kontak };
+    if (isNew) await S.api.createUser({ nama: d.nama, email: d.email, password: d.password, role: d.role, unit_id, ...kontak });
+    else await S.api.updateProfile(p.id, { nama: d.nama, role: d.role, unit_id, ...kontak });
     closeModal(); toast('Pengguna disimpan'); adminPengguna();
   });
 }

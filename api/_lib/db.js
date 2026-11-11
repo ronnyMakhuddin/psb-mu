@@ -2,7 +2,7 @@ import pg from 'pg';
 import { SCHEMA_SQL } from './schema.js';
 
 // Naikkan bersama nilai schema_version di database/schema.sql setiap ada perubahan skema
-const SCHEMA_VERSION = '3';
+const SCHEMA_VERSION = '4';
 
 const conn = process.env.DATABASE_URL || process.env.POSTGRES_URL || '';
 let pool = globalThis.__psbPool;

@@ -125,6 +125,14 @@ create table if not exists public.pendaftar (
   created_at          timestamptz not null default now(),
   updated_at          timestamptz not null default now()
 );
+-- data tambahan sesuai formulir cetak (v5)
+alter table public.pendaftar add column if not exists no_kk            text;
+alter table public.pendaftar add column if not exists nik_ayah         text;
+alter table public.pendaftar add column if not exists pendidikan_ayah  text;
+alter table public.pendaftar add column if not exists hp_ayah          text;
+alter table public.pendaftar add column if not exists nik_ibu          text;
+alter table public.pendaftar add column if not exists pendidikan_ibu   text;
+alter table public.pendaftar add column if not exists hp_ibu           text;
 create index if not exists pendaftar_unit_pend_idx on public.pendaftar(unit_pendidikan_id);
 create index if not exists pendaftar_unit_asr_idx  on public.pendaftar(unit_asrama_id);
 
@@ -190,6 +198,13 @@ begin
     pekerjaan_ayah = case when p ? 'pekerjaan_ayah' then nullif(p->>'pekerjaan_ayah','') else pekerjaan_ayah end,
     nama_ibu       = case when p ? 'nama_ibu' then nullif(p->>'nama_ibu','') else nama_ibu end,
     pekerjaan_ibu  = case when p ? 'pekerjaan_ibu' then nullif(p->>'pekerjaan_ibu','') else pekerjaan_ibu end,
+    no_kk          = case when p ? 'no_kk' then nullif(p->>'no_kk','') else no_kk end,
+    nik_ayah       = case when p ? 'nik_ayah' then nullif(p->>'nik_ayah','') else nik_ayah end,
+    pendidikan_ayah = case when p ? 'pendidikan_ayah' then nullif(p->>'pendidikan_ayah','') else pendidikan_ayah end,
+    hp_ayah        = case when p ? 'hp_ayah' then nullif(p->>'hp_ayah','') else hp_ayah end,
+    nik_ibu        = case when p ? 'nik_ibu' then nullif(p->>'nik_ibu','') else nik_ibu end,
+    pendidikan_ibu = case when p ? 'pendidikan_ibu' then nullif(p->>'pendidikan_ibu','') else pendidikan_ibu end,
+    hp_ibu         = case when p ? 'hp_ibu' then nullif(p->>'hp_ibu','') else hp_ibu end,
     nama_wali      = case when p ? 'nama_wali' then nullif(p->>'nama_wali','') else nama_wali end,
     hubungan_wali  = case when p ? 'hubungan_wali' then nullif(p->>'hubungan_wali','') else hubungan_wali end,
     penghasilan    = case when p ? 'penghasilan' then nullif(p->>'penghasilan','') else penghasilan end,
@@ -305,5 +320,5 @@ where not exists (select 1 from public.units);
 -- VERSI SKEMA (dipakai API untuk menjalankan pembaruan otomatis)
 -- ---------------------------------------------------------------------
 create table if not exists public.app_meta (key text primary key, value text);
-insert into public.app_meta (key, value) values ('schema_version', '4')
+insert into public.app_meta (key, value) values ('schema_version', '5')
 on conflict (key) do update set value = excluded.value;

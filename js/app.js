@@ -169,6 +169,7 @@ const emptyHtml = (text = 'Belum ada data', icon = 'inbox') => `<div class="empt
 // ---------------------------------------------------------------------
 // DEFINISI FORMULIR BIODATA
 // ---------------------------------------------------------------------
+const PENDIDIKAN = ['Tidak sekolah', 'SD/MI', 'SMP/MTs', 'SMA/MA/SMK', 'Pondok Pesantren', 'D1/D2/D3', 'S1/D4', 'S2', 'S3'];
 const PENGHASILAN = ['< 1 juta', '1-2 juta', '2-5 juta', '5-10 juta', '> 10 juta'];
 const F = {
   santri: [
@@ -176,6 +177,7 @@ const F = {
     { k: 'jenis_kelamin', l: 'Jenis Kelamin', req: true, type: 'select', opts: [['L', 'Laki-laki'], ['P', 'Perempuan']] },
     { k: 'nik', l: 'NIK', ph: '16 digit', pattern: '\\d{16}', inputmode: 'numeric' },
     { k: 'nisn', l: 'NISN', ph: '10 digit', pattern: '\\d{10}', inputmode: 'numeric' },
+    { k: 'no_kk', l: 'No. Kartu Keluarga (KK)', ph: '16 digit', pattern: '\\d{16}', inputmode: 'numeric', full: true },
     { k: 'tempat_lahir', l: 'Tempat Lahir', req: true },
     { k: 'tanggal_lahir', l: 'Tanggal Lahir', req: true, type: 'date' },
     { k: 'anak_ke', l: 'Anak Ke-', type: 'number' },
@@ -190,11 +192,21 @@ const F = {
     { k: 'provinsi', l: 'Provinsi', req: true },
     { k: 'kode_pos', l: 'Kode Pos', inputmode: 'numeric' },
   ],
-  ortu: [
-    { k: 'nama_ayah', l: 'Nama Ayah', req: true },
-    { k: 'pekerjaan_ayah', l: 'Pekerjaan Ayah' },
-    { k: 'nama_ibu', l: 'Nama Ibu', req: true },
-    { k: 'pekerjaan_ibu', l: 'Pekerjaan Ibu' },
+  ayah: [
+    { k: 'nama_ayah', l: 'Nama Ayah', req: true, full: true },
+    { k: 'nik_ayah', l: 'NIK Ayah', ph: '16 digit', pattern: '\\d{16}', inputmode: 'numeric' },
+    { k: 'pendidikan_ayah', l: 'Pendidikan Terakhir', type: 'select', opts: PENDIDIKAN.map((p) => [p, p]) },
+    { k: 'pekerjaan_ayah', l: 'Pekerjaan' },
+    { k: 'hp_ayah', l: 'No. HP Ayah', type: 'tel', inputmode: 'tel', ph: '08xxxxxxxxxx' },
+  ],
+  ibu: [
+    { k: 'nama_ibu', l: 'Nama Ibu', req: true, full: true },
+    { k: 'nik_ibu', l: 'NIK Ibu', ph: '16 digit', pattern: '\\d{16}', inputmode: 'numeric' },
+    { k: 'pendidikan_ibu', l: 'Pendidikan Terakhir', type: 'select', opts: PENDIDIKAN.map((p) => [p, p]) },
+    { k: 'pekerjaan_ibu', l: 'Pekerjaan' },
+    { k: 'hp_ibu', l: 'No. HP Ibu', type: 'tel', inputmode: 'tel', ph: '08xxxxxxxxxx' },
+  ],
+  wali: [
     { k: 'nama_wali', l: 'Nama Wali', hint: 'Isi jika tinggal bersama wali' },
     { k: 'hubungan_wali', l: 'Hubungan dengan Wali' },
     { k: 'penghasilan', l: 'Penghasilan Orang Tua / Bulan', type: 'select', opts: PENGHASILAN.map((p) => [p, p]) },
@@ -204,7 +216,9 @@ const F = {
 const SECTIONS = [
   { title: 'Data Calon Santri', icon: 'user', fields: F.santri },
   { title: 'Alamat Tempat Tinggal', icon: 'map-pin', fields: F.alamat },
-  { title: 'Data Orang Tua / Wali', icon: 'users', fields: F.ortu },
+  { title: 'Data Ayah', icon: 'user-round', fields: F.ayah },
+  { title: 'Data Ibu', icon: 'user-round', fields: F.ibu },
+  { title: 'Wali & Lainnya', icon: 'users', fields: F.wali },
 ];
 
 function fieldHtml(f, v = {}, disabled = false) {
@@ -376,7 +390,7 @@ async function pageDaftar() {
   const draft = store.get('psb_draft') || {};
   const steps = [
     { title: 'Data Calon Santri', html: (v) => sectionHtml(SECTIONS[0], v) + sectionHtml(SECTIONS[1], v) },
-    { title: 'Data Orang Tua / Wali', html: (v) => sectionHtml(SECTIONS[2], v) },
+    { title: 'Data Orang Tua / Wali', html: (v) => `<div class="hint full" style="grid-column:1/-1;font-weight:700;color:var(--green-800)">${ic('id-card', 'style="width:14px;height:14px;vertical-align:-2px"')} Diisi sesuai KK (Kartu Keluarga)</div>${SECTIONS.slice(2).map((sec) => sectionHtml(sec, v)).join('')}` },
     {
       title: 'Pilihan Unit & Kontak',
       html: (v) => `
@@ -418,7 +432,8 @@ async function pageDaftar() {
         nama_lengkap: 'Muhammad Rizki Ramadhan', jenis_kelamin: 'L', nik: '3516012304140002', nisn: '0141234567',
         tempat_lahir: 'Mojokerto', tanggal_lahir: '2014-04-23', anak_ke: '2', jumlah_saudara: '3', asal_sekolah: "MI Mamba'ul Ulum",
         alamat: 'Dsn. Awang-awang RT 02 RW 01', desa: 'Awang-awang', kecamatan: 'Mojosari', kabupaten: 'Mojokerto', provinsi: 'Jawa Timur', kode_pos: '61382',
-        nama_ayah: 'Abdul Ghofur', pekerjaan_ayah: 'Petani', nama_ibu: 'Siti Maryam', pekerjaan_ibu: 'Pedagang', penghasilan: '2-5 juta',
+        no_kk: '3516010101100003', nama_ayah: 'Abdul Ghofur', nik_ayah: '3516011203800001', pendidikan_ayah: 'SMA/MA/SMK', pekerjaan_ayah: 'Petani', hp_ayah: '081333444555',
+        nama_ibu: 'Siti Maryam', nik_ibu: '3516014507850002', pendidikan_ibu: 'SMP/MTs', pekerjaan_ibu: 'Pedagang', hp_ibu: '081333444666', penghasilan: '2-5 juta',
         unit_pendidikan_id: data.unit_pendidikan_id || pend?.id || '', unit_asrama_id: data.unit_asrama_id || asr?.id || '', no_hp: data.no_hp || '081333444555',
         ...Object.fromEntries(Object.entries(data).filter(([, v]) => v)),
       });
@@ -839,7 +854,9 @@ function openPendaftar(id, tab = 'detail') {
     ['Nama Lengkap', d.nama_lengkap], ['NIK', d.nik], ['NISN', d.nisn], ['Jenis Kelamin', jk(d.jenis_kelamin)],
     ['Tempat, Tgl Lahir', `${d.tempat_lahir || '-'}, ${fmtDate(d.tanggal_lahir)}`], ['Anak ke / Saudara', `${d.anak_ke ?? '-'} / ${d.jumlah_saudara ?? '-'}`],
     ['Asal Sekolah', d.asal_sekolah], ['Alamat', [d.alamat, d.desa, d.kecamatan, d.kabupaten, d.provinsi, d.kode_pos].filter(Boolean).join(', ')],
-    ['Ayah', `${d.nama_ayah || '-'} (${d.pekerjaan_ayah || '-'})`], ['Ibu', `${d.nama_ibu || '-'} (${d.pekerjaan_ibu || '-'})`],
+    ['No. KK', d.no_kk],
+    ['Ayah', `${d.nama_ayah || '-'} (${d.pekerjaan_ayah || '-'})`], ['NIK Ayah', d.nik_ayah], ['Pendidikan Ayah', d.pendidikan_ayah], ['HP Ayah', d.hp_ayah],
+    ['Ibu', `${d.nama_ibu || '-'} (${d.pekerjaan_ibu || '-'})`], ['NIK Ibu', d.nik_ibu], ['Pendidikan Ibu', d.pendidikan_ibu], ['HP Ibu', d.hp_ibu],
     ['Wali', d.nama_wali ? `${d.nama_wali} (${d.hubungan_wali || '-'})` : '-'], ['Penghasilan', d.penghasilan],
     ['No. HP / WA', d.no_hp], ['Email', d.email], ['Unit Pendidikan', d.unit_pendidikan?.nama], ['Asrama', d.unit_asrama?.nama || 'Tidak mukim'],
     ['Tanggal Daftar', fmtDate(d.created_at, true)], ['Terakhir Diubah', fmtDate(d.updated_at, true)],

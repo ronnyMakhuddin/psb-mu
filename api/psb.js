@@ -7,7 +7,8 @@ const STATUS = ['menunggu', 'diverifikasi', 'diterima', 'ditolak'];
 const BIODATA = [
   'nama_lengkap', 'nik', 'nisn', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'anak_ke',
   'jumlah_saudara', 'alamat', 'desa', 'kecamatan', 'kabupaten', 'provinsi', 'kode_pos',
-  'asal_sekolah', 'nama_ayah', 'pekerjaan_ayah', 'nama_ibu', 'pekerjaan_ibu', 'nama_wali',
+  'asal_sekolah', 'no_kk', 'nama_ayah', 'nik_ayah', 'pendidikan_ayah', 'pekerjaan_ayah', 'hp_ayah',
+  'nama_ibu', 'nik_ibu', 'pendidikan_ibu', 'pekerjaan_ibu', 'hp_ibu', 'nama_wali',
   'hubungan_wali', 'penghasilan', 'email',
 ];
 const normHp = (p) => { const d = String(p || '').replace(/\D/g, ''); return d.startsWith('62') ? '0' + d.slice(2) : d; };

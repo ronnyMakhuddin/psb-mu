@@ -12,7 +12,8 @@ export const ROLE_LABEL = {
 export const BIODATA_FIELDS = [
   'nama_lengkap', 'nik', 'nisn', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'anak_ke',
   'jumlah_saudara', 'alamat', 'desa', 'kecamatan', 'kabupaten', 'provinsi', 'kode_pos',
-  'asal_sekolah', 'nama_ayah', 'pekerjaan_ayah', 'nama_ibu', 'pekerjaan_ibu', 'nama_wali',
+  'asal_sekolah', 'no_kk', 'nama_ayah', 'nik_ayah', 'pendidikan_ayah', 'pekerjaan_ayah', 'hp_ayah',
+  'nama_ibu', 'nik_ibu', 'pendidikan_ibu', 'pekerjaan_ibu', 'hp_ibu', 'nama_wali',
   'hubungan_wali', 'penghasilan', 'email',
 ];
 

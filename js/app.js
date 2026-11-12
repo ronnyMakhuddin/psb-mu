@@ -397,6 +397,8 @@ async function pageDaftar() {
       <div class="narrow">
         <div class="page-head"><h2>Formulir Pendaftaran</h2><p class="muted" style="margin:0">Tahun Ajaran ${esc(st.tahun_ajaran)} · ${esc(st.gelombang)} — Langkah ${cur + 1} dari ${steps.length}: <b>${steps[cur].title}</b></p></div>
         ${cur === 0 && st.syarat_pendaftaran ? `<details class="card mb syarat-details"><summary>${ic('clipboard-list')} Lihat syarat pendaftaran</summary><div class="mt">${syaratHtml(st.syarat_pendaftaran)}</div></details>` : ''}
+        ${S.api.mode === 'preview' ? `<div class="card mb small row" style="padding:12px 16px">${ic('flask-conical')}<span class="grow">Mode preview: isi data contoh dan lompat ke langkah</span>
+          ${steps.map((t, i) => `<button type="button" class="btn btn-sm ${i === cur ? 'btn-gold' : 'btn-outline'}" data-jump="${i}">${i + 1}</button>`).join('')}</div>` : ''}
         <div class="stepper">${steps.map((_, i) => `<div class="${i <= cur ? 'on' : ''}"></div>`).join('')}</div>
         <form class="card" id="reg-form" novalidate>
           <div class="form-grid">${steps[cur].html(data)}</div>
@@ -409,6 +411,19 @@ async function pageDaftar() {
     const form = document.getElementById('reg-form');
     const save = () => { Object.assign(data, formData(form)); delete data.setuju; store.set('psb_draft', data); };
     form.addEventListener('input', save);
+    document.querySelectorAll('[data-jump]').forEach((b) => b.addEventListener('click', () => {
+      const pend = S.units.find((u) => u.jenis === 'pendidikan');
+      const asr = S.units.find((u) => u.jenis === 'asrama');
+      Object.assign(data, {
+        nama_lengkap: 'Muhammad Rizki Ramadhan', jenis_kelamin: 'L', nik: '3516012304140002', nisn: '0141234567',
+        tempat_lahir: 'Mojokerto', tanggal_lahir: '2014-04-23', anak_ke: '2', jumlah_saudara: '3', asal_sekolah: "MI Mamba'ul Ulum",
+        alamat: 'Dsn. Awang-awang RT 02 RW 01', desa: 'Awang-awang', kecamatan: 'Mojosari', kabupaten: 'Mojokerto', provinsi: 'Jawa Timur', kode_pos: '61382',
+        nama_ayah: 'Abdul Ghofur', pekerjaan_ayah: 'Petani', nama_ibu: 'Siti Maryam', pekerjaan_ibu: 'Pedagang', penghasilan: '2-5 juta',
+        unit_pendidikan_id: data.unit_pendidikan_id || pend?.id || '', unit_asrama_id: data.unit_asrama_id || asr?.id || '', no_hp: data.no_hp || '081333444555',
+        ...Object.fromEntries(Object.entries(data).filter(([, v]) => v)),
+      });
+      cur = Number(b.dataset.jump); render(); window.scrollTo(0, 0);
+    }));
     document.getElementById('prev')?.addEventListener('click', () => { save(); cur -= 1; render(); window.scrollTo(0, 0); });
     form.addEventListener('submit', async (e) => {
       e.preventDefault();

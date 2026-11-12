@@ -11,7 +11,7 @@ export const ROLE_LABEL = {
 // Kolom biodata yang boleh diisi pendaftar
 export const BIODATA_FIELDS = [
   'nama_lengkap', 'nik', 'nisn', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'anak_ke',
-  'jumlah_saudara', 'alamat', 'desa', 'kecamatan', 'kabupaten', 'provinsi', 'kode_pos',
+  'jumlah_saudara', 'rt', 'rw', 'alamat', 'desa', 'kecamatan', 'kabupaten', 'provinsi', 'kode_pos',
   'asal_sekolah', 'no_kk', 'nama_ayah', 'nik_ayah', 'pendidikan_ayah', 'pekerjaan_ayah', 'hp_ayah',
   'nama_ibu', 'nik_ibu', 'pendidikan_ibu', 'pekerjaan_ibu', 'hp_ibu', 'nama_wali',
   'hubungan_wali', 'penghasilan', 'email',
@@ -112,7 +112,7 @@ function previewApi() {
         id: 'd1', no_pendaftaran: 'MU260001', tahun_ajaran: '2027/2028', gelombang: 'Gelombang 1',
         nama_lengkap: 'Ahmad Fauzan', nik: '3516010101120001', nisn: '0121234567', jenis_kelamin: 'L',
         tempat_lahir: 'Mojokerto', tanggal_lahir: '2014-03-12', anak_ke: 1, jumlah_saudara: 2,
-        alamat: 'Jl. Raya Awang-awang No. 5', desa: 'Awang-awang', kecamatan: 'Mojosari', kabupaten: 'Mojokerto',
+        rt: '003', rw: '001', alamat: 'Jl. Raya Awang-awang No. 5', desa: 'Awang-awang', kecamatan: 'Mojosari', kabupaten: 'Mojokerto',
         provinsi: 'Jawa Timur', kode_pos: '61382', asal_sekolah: 'MI Mamba\'ul Ulum',
         nama_ayah: 'Abdul Rahman', pekerjaan_ayah: 'Wiraswasta', nama_ibu: 'Siti Aminah', pekerjaan_ibu: 'Ibu Rumah Tangga',
         nama_wali: '', hubungan_wali: '', penghasilan: '2-5 juta', no_hp: '081234567890', email: '',

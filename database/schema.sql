@@ -133,6 +133,9 @@ alter table public.pendaftar add column if not exists hp_ayah          text;
 alter table public.pendaftar add column if not exists nik_ibu          text;
 alter table public.pendaftar add column if not exists pendidikan_ibu   text;
 alter table public.pendaftar add column if not exists hp_ibu           text;
+-- RT/RW terpisah (v6)
+alter table public.pendaftar add column if not exists rt               text;
+alter table public.pendaftar add column if not exists rw               text;
 create index if not exists pendaftar_unit_pend_idx on public.pendaftar(unit_pendidikan_id);
 create index if not exists pendaftar_unit_asr_idx  on public.pendaftar(unit_asrama_id);
 
@@ -205,6 +208,8 @@ begin
     nik_ibu        = case when p ? 'nik_ibu' then nullif(p->>'nik_ibu','') else nik_ibu end,
     pendidikan_ibu = case when p ? 'pendidikan_ibu' then nullif(p->>'pendidikan_ibu','') else pendidikan_ibu end,
     hp_ibu         = case when p ? 'hp_ibu' then nullif(p->>'hp_ibu','') else hp_ibu end,
+    rt             = case when p ? 'rt' then nullif(p->>'rt','') else rt end,
+    rw             = case when p ? 'rw' then nullif(p->>'rw','') else rw end,
     nama_wali      = case when p ? 'nama_wali' then nullif(p->>'nama_wali','') else nama_wali end,
     hubungan_wali  = case when p ? 'hubungan_wali' then nullif(p->>'hubungan_wali','') else hubungan_wali end,
     penghasilan    = case when p ? 'penghasilan' then nullif(p->>'penghasilan','') else penghasilan end,
@@ -320,5 +325,5 @@ where not exists (select 1 from public.units);
 -- VERSI SKEMA (dipakai API untuk menjalankan pembaruan otomatis)
 -- ---------------------------------------------------------------------
 create table if not exists public.app_meta (key text primary key, value text);
-insert into public.app_meta (key, value) values ('schema_version', '5')
+insert into public.app_meta (key, value) values ('schema_version', '6')
 on conflict (key) do update set value = excluded.value;

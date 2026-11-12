@@ -173,6 +173,14 @@ const actions = {
       (str(data.prefix_nomor, 6) || 'MU').toUpperCase(), str(data.kontak_wa, 30), str(data.alamat, 300), str(data.info_pendaftaran, 10000), str(data.syarat_pendaftaran, 10000),
     ])).rows[0];
   },
+  // Operator mengubah brosur, WA, dan sosmed untuk unitnya sendiri
+  async updateMyUnit(data = {}, staff) {
+    requireStaff(staff);
+    if (!staff.unit_id) throw httpError(400, 'Akun Anda belum memiliki unit');
+    return (await q(`update units set brosur = $2, wa_operator = $3, instagram = $4, facebook = $5, tiktok = $6, youtube = $7, website = $8
+      where id = $1 returning *`, [staff.unit_id, str(data.brosur, 500), str(data.wa_operator, 30), str(data.instagram, 200),
+      str(data.facebook, 200), str(data.tiktok, 200), str(data.youtube, 200), str(data.website, 200)])).rows[0];
+  },
   async saveUnit({ data = {} }, staff) {
     requireAdmin(staff);
     const nama = str(data.nama, 150);

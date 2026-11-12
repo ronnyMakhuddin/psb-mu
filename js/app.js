@@ -661,6 +661,7 @@ function staffMenu() {
     ['pengumuman', 'Pengumuman', 'megaphone'],
   ];
   if (isAdmin()) m.push(['unit', 'Unit', 'school'], ['pengguna', 'Pengguna', 'user-cog'], ['pengaturan', 'Pengaturan', 'settings']);
+  else m.push(['unit-saya', 'Unit Saya', 'school']);
   return m;
 }
 
@@ -988,6 +989,53 @@ async function adminUnit() {
   }));
 }
 
+const PROMO_KEYS = ['brosur', 'wa_operator', 'instagram', 'facebook', 'tiktok', 'youtube', 'website'];
+function unitPromoFields(u) {
+  return `
+      <div class="section-title">${ic('share-2')} Brosur, Kontak &amp; Media Sosial (tampil di beranda)</div>
+      <div class="field full"><label for="pr-brosur">Link Brosur</label><input class="input" id="pr-brosur" name="brosur" type="text" inputmode="url" placeholder="Link Google Drive / PDF / gambar brosur" value="${esc(u.brosur || '')}"><div class="hint">Pastikan link bisa dibuka publik (mis. Google Drive: Bagikan → Siapa saja yang memiliki link).</div></div>
+      <div class="field full"><label for="pr-wa">WhatsApp Unit</label><input class="input" id="pr-wa" name="wa_operator" type="tel" inputmode="tel" placeholder="08xxxxxxxxxx" value="${esc(u.wa_operator || '')}"></div>
+      ${SOSMED.map((s) => `<div class="field ${s.k === 'website' ? 'full' : ''}"><label for="pr-${s.k}">${s.l}</label><input class="input" id="pr-${s.k}" name="${s.k}" placeholder="${s.k === 'website' ? 'contoh: mambaulummojosari.sch.id' : 'nama akun atau link'}" value="${esc(u[s.k] || '')}"></div>`).join('')}
+      <div class="hint full" style="grid-column:1/-1">Kosongkan yang tidak dimiliki; tombolnya otomatis tidak ditampilkan.</div>`;
+}
+
+// Operator: kelola brosur, WA, dan sosmed untuk unitnya sendiri
+async function operatorUnitSaya() {
+  staffLayout('unit-saya', 'Unit Saya', loadingHtml);
+  if (!S.staff.unit_id) { setView(`<div class="card">${emptyHtml('Akun Anda belum ditetapkan ke unit mana pun. Minta admin untuk menetapkan unit Anda.', 'school')}</div>`); return; }
+  try { S.units = await S.api.listUnits(); } catch (e) { toast(e.message, 'error'); }
+  const u = S.units.find((x) => x.id === S.staff.unit_id);
+  if (!u) { setView(`<div class="card">${emptyHtml('Unit tidak ditemukan')}</div>`); return; }
+  setView(`
+    <div class="grid-2">
+      <form class="card" id="us-promo">
+        <h3>${ic(u.jenis === 'asrama' ? 'house' : 'graduation-cap')} ${esc(u.nama)}</h3>
+        <div class="form-grid">${unitPromoFields(u)}</div>
+        <div class="row mt" style="justify-content:flex-end"><button class="btn btn-primary" id="us-promo-save">${ic('save')} Simpan</button></div>
+      </form>
+      <div class="card"><h3>${ic('eye')} Tampilan di Beranda</h3><p class="small muted" style="margin-top:0">Begini kartu unit Anda terlihat oleh calon pendaftar.</p><div id="us-preview"></div></div>
+    </div>`);
+  const f = document.getElementById('us-promo');
+  const preview = () => {
+    const v = formData(f);
+    document.getElementById('us-preview').innerHTML = `<div class="unit-card-wrap" style="border:1px solid var(--border);border-radius:14px;padding:14px">
+      <div class="unit-card"><div class="ic ${u.jenis}">${ic(u.jenis === 'asrama' ? 'house' : 'graduation-cap')}</div><div class="grow"><b>${esc(u.nama)}</b><div class="small muted">${esc(u.keterangan || '')}</div></div></div>
+      ${unitActions({ ...u, ...v }) || '<span class="small muted">Belum ada tombol. Isi salah satu kolom di samping.</span>'}</div>`;
+    icons();
+  };
+  f.addEventListener('input', preview);
+  preview();
+  f.addEventListener('submit', (e) => {
+    e.preventDefault();
+    withBusy(document.getElementById('us-promo-save'), async () => {
+      const v = formData(f);
+      await S.api.updateMyUnit(Object.fromEntries(PROMO_KEYS.map((k) => [k, v[k] || ''])));
+      S.units = await S.api.listUnits();
+      toast('Info unit disimpan dan tampil di beranda');
+    });
+  });
+}
+
 function editUnit(u = { jenis: 'pendidikan', aktif: true, kuota: 0, urutan: 0 }) {
   const m = openModal({
     title: u.id ? 'Ubah Unit' : 'Unit Baru', size: 'sm',
@@ -998,11 +1046,7 @@ function editUnit(u = { jenis: 'pendidikan', aktif: true, kuota: 0, urutan: 0 })
       <div class="field full"><label>Keterangan</label><input class="input" name="keterangan" value="${esc(u.keterangan || '')}"></div>
       <div class="field"><label>Urutan</label><input class="input" type="number" name="urutan" value="${esc(u.urutan ?? 0)}"></div>
       <div class="field" style="align-self:end"><label class="switch"><input type="checkbox" name="aktif" ${u.aktif ? 'checked' : ''}> Aktif</label></div>
-      <div class="section-title">${ic('share-2')} Brosur, Kontak &amp; Media Sosial (tampil di beranda)</div>
-      <div class="field full"><label>Link Brosur</label><input class="input" name="brosur" type="text" inputmode="url" placeholder="Link Google Drive / PDF / gambar brosur" value="${esc(u.brosur || '')}"><div class="hint">Pastikan link bisa dibuka publik (mis. Google Drive: Bagikan → Siapa saja yang memiliki link).</div></div>
-      <div class="field full"><label>WhatsApp Operator</label><input class="input" name="wa_operator" type="tel" inputmode="tel" placeholder="08xxxxxxxxxx" value="${esc(u.wa_operator || '')}"></div>
-      ${SOSMED.map((s) => `<div class="field ${s.k === 'website' ? 'full' : ''}"><label>${s.l}</label><input class="input" name="${s.k}" placeholder="${s.k === 'website' ? 'contoh: mambaulummojosari.sch.id' : 'nama akun atau link'}" value="${esc(u[s.k] || '')}"></div>`).join('')}
-      <div class="hint full" style="grid-column:1/-1">Kosongkan yang tidak dimiliki; tombolnya otomatis tidak ditampilkan.</div>
+      ${unitPromoFields(u)}
     </form>`,
     foot: `<button class="btn btn-outline" data-close>Batal</button><button class="btn btn-primary" id="u-save">${ic('save')} Simpan</button>`,
   });
@@ -1142,7 +1186,7 @@ async function adminPengaturan() {
 // ---------------------------------------------------------------------
 // ROUTER
 // ---------------------------------------------------------------------
-const ADMIN_ROUTES = { dashboard: adminDashboard, pendaftar: adminPendaftar, pengumuman: adminPengumuman, unit: adminUnit, pengguna: adminPengguna, pengaturan: adminPengaturan };
+const ADMIN_ROUTES = { dashboard: adminDashboard, pendaftar: adminPendaftar, pengumuman: adminPengumuman, unit: adminUnit, pengguna: adminPengguna, pengaturan: adminPengaturan, 'unit-saya': operatorUnitSaya };
 const ADMIN_ONLY = ['unit', 'pengguna', 'pengaturan'];
 
 async function route() {

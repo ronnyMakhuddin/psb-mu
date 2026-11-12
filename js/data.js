@@ -57,6 +57,7 @@ function serverApi() {
     saveUnit: (data) => call('saveUnit', { data }),
     deleteUnit: (id) => call('deleteUnit', { id }),
     listKontak: () => call('listKontak'),
+    updateMyUnit: (data) => call('updateMyUnit', data),
     updateMyProfile: (data) => call('updateMyProfile', data),
     daftar: (payload) => call('daftar', { payload }),
     loginPendaftar: (no, hp) => call('loginPendaftar', { no, hp }),
@@ -154,6 +155,11 @@ function previewApi() {
       const n = { ...u, id: uid() }; db.units.push(n); return delay(n);
     },
     async deleteUnit(id) { db.units = db.units.filter((u) => u.id !== id); },
+    async updateMyUnit(d) {
+      const u = unitById(me?.unit_id);
+      if (!u) throw new Error('Akun Anda belum memiliki unit');
+      Object.assign(u, d); return delay(u);
+    },
     async listKontak() {
       return delay(db.profiles.filter((p) => p.tampil_kontak && p.no_wa).map((p) => ({ id: p.id, nama: p.nama, role: p.role, no_wa: p.no_wa, unit_id: p.unit_id, unit: pick(unitById(p.unit_id)) })));
     },
